@@ -162,9 +162,9 @@ object SvnImportFrame: TSvnImportFrame
       OnClick = ImportClick
     end
     object RecentMessages: TButton
-      Left = 734
+      Left = 676
       Top = 6
-      Width = 98
+      Width = 156
       Height = 25
       Anchors = [akRight, akBottom]
       Caption = 'Recent Comments'

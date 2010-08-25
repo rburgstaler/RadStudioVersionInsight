@@ -40,8 +40,8 @@ uses
 
 type
 
-  TImportCallBack = procedure(const RepoPath, Comment: string;
-    const RecentComments: TStringList; const URLHistory: TStringList) of object;
+  TImportCallBack = function(const RepoPath, Comment: string;
+    const RecentComments: TStringList; const URLHistory: TStringList): Boolean of object;
   TImportCloseCallBack = procedure of object;
   TBrowseURLCallBack = function(var AURL: string): Boolean of object;
 
@@ -185,11 +185,15 @@ begin
     FRecentComments.Move(Idx, 0)
   else
     FRecentComments.Insert(0, Comment.Text);
-  if (FURLHistory.Count > 0) and (FURLHistory[FURLHistory.Count - 1] <> URL.Text)then
+  if (FURLHistory.Count > 0) and (FURLHistory[FURLHistory.Count - 1] <> URL.Text) then
+    FURLHistory.Insert(0, URL.Text)
+  else if FURLHistory.Count = 0 then
     FURLHistory.Add(URL.Text);
   if Assigned(FImportCallBack) then
-    FImportCallBack(URL.Text, Comment.Text, FRecentComments, FURLHistory);
-  PostMessage(Handle, CM_Release, 0, 0);
+  begin
+    if FImportCallBack(URL.Text, Comment.Text, FRecentComments, FURLHistory) then
+      PostMessage(Handle, CM_Release, 0, 0);
+  end;
 end;
 
 function TSvnImportFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
