@@ -103,7 +103,7 @@ begin
     PathName := CheckoutDialog.URL.Text;
     TargetDir := CheckoutDialog.Destination.Text;
     Recurse := CheckoutDialog.Recursive.Checked;
-    IgnoreExternals := CheckoutDialog.IncludeExternals.Checked;
+    IgnoreExternals := not CheckoutDialog.IncludeExternals.Checked;
     if CheckoutDialog.CurrentRevision.Checked then
       Revision := -1
     else if not TryStrToInt(CheckoutDialog.SelectRevision.Text, Revision) then
