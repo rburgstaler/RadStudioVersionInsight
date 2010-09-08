@@ -82,15 +82,15 @@ type
     function GetTabHintText: string;
     procedure Close(var Allowed: Boolean);
     { CallBacks }
-    procedure ImportCallBack(const RepoPath, Comment: string;
-      const RecentComments: TStringList; const URLHistory: TStringList);
+    function ImportCallBack(const RepoPath, Comment: string;
+      const RecentComments: TStringList; const URLHistory: TStringList): Boolean;
     procedure CloseCallBack;
     function BrowseURLCallBack(var AURL: string): Boolean;
     { Misc }
-    procedure ImportNewLocation(const RepoPath, Comment: string;
-      const RecentComments: TStringList);
-    procedure ImportExisting(const RepoPath, Comment: string;
-      const RecentComments: TStringList);
+    function ImportNewLocation(const RepoPath, Comment: string;
+      const RecentComments: TStringList): Boolean;
+    function ImportExisting(const RepoPath, Comment: string;
+      const RecentComments: TStringList): Boolean;
   public
     constructor Create(ASvnIDEClient: TSvnIDEClient;
       const SuggestedRepoPath, RootPath: string;
@@ -324,8 +324,8 @@ begin
   Result := sSvnImportView;
 end;
 
-procedure TImport.ImportCallBack(const RepoPath, Comment: string;
-  const RecentComments: TStringList; const URLHistory: TStringList);
+function TImport.ImportCallBack(const RepoPath, Comment: string;
+  const RecentComments: TStringList; const URLHistory: TStringList): Boolean;
 var
   S: string;
   I: Integer;
@@ -335,10 +335,11 @@ begin
     FCommitFiles.Clear;
     FSvnImportFrame.GetFiles(FCommitFiles);
     if FNewLocation then
-      ImportNewLocation(RepoPath, Comment, RecentComments)
+      Result := ImportNewLocation(RepoPath, Comment, RecentComments)
     else
-      ImportExisting(RepoPath, Comment, RecentComments);
+      Result := ImportExisting(RepoPath, Comment, RecentComments);
   except
+    Result := False;
     if ExceptObject is ESvnError then
     begin
       S := '';
@@ -351,14 +352,15 @@ begin
   end;
 end;
 
-procedure TImport.ImportExisting(const RepoPath, Comment: string;
-  const RecentComments: TStringList);
+function TImport.ImportExisting(const RepoPath, Comment: string;
+  const RecentComments: TStringList): Boolean;
 var
   I: Integer;
   S: string;
   DirectoryList: TStringList;
   CheckInList: TStringList;
 begin
+  Result := True;
   DirectoryList := TStringList.Create;
   DirectoryList.Sorted := True;
   DirectoryList.CaseSensitive := False;
@@ -388,8 +390,9 @@ begin
         for I := 0 to FCommitFiles.Count - 1 do
           IDEClient.SvnClient.Add(FCommitFiles[I]);
       except
+        Result := False;
         if not HandleSvnException(ExceptObject) then
-        raise;
+          raise;
       end;
       for I := 0 to FCommitFiles.Count - 1 do
         CheckInList.Add(FCommitFiles[I]);
@@ -402,17 +405,23 @@ begin
   end;
 end;
 
-procedure TImport.ImportNewLocation(const RepoPath, Comment: string;
-  const RecentComments: TStringList);
+function TImport.ImportNewLocation(const RepoPath, Comment: string;
+  const RecentComments: TStringList): Boolean;
 var
   Paths: TStringList;
+  LRepoPath: string;
 begin
   Paths := TStringList.Create;
   try
-    Paths.Add(RepoPath);
+    LRepoPath := RepoPath;
+    if IsDelimiter('/\', LRepoPath, Length(LRepoPath)) then
+    begin
+      SetLength(LRepoPath, Length(LRepoPath) - 1);
+    end;
+    Paths.Add(LRepoPath);
     try
-      IDEClient.SvnClient.MkDir(Paths, True);
-      IDEClient.SvnClient.Checkout(RepoPath, FRootPath);
+      IDEClient.SvnClient.MkDir(Paths, Comment, True);
+      IDEClient.SvnClient.Checkout(LRepoPath, FRootPath);
     except
       if not HandleSvnException(ExceptObject) then
         raise;
@@ -420,7 +429,7 @@ begin
   finally
     Paths.Free;
   end;
-  ImportExisting(RepoPath, Comment, RecentComments);
+  Result := ImportExisting(LRepoPath, Comment, RecentComments);
 end;
 
 procedure TImport.SelectView;

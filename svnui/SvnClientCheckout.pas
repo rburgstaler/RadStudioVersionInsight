@@ -109,7 +109,7 @@ begin
     else if not TryStrToInt(CheckoutDialog.SelectRevision.Text, Revision) then
       Revision := -1;
     if URLHistory.IndexOf(PathName) = -1 then
-      URLHistory.Add(PathName);
+      URLHistory.Insert(0, PathName);
   end
   else
     Result := False;

@@ -401,15 +401,16 @@ var
   BaseKey: string;
   Key: string;
   I: Integer;
-  Lower: Integer;
+  Count: Integer;
 begin
   Reg := TRegistry.Create;
   BaseKey := BaseRegKey + sURLHistory;
   Reg.OpenKey(BaseKey, True);
-  Lower := List.Count - MaxURLHistory;
-  if Lower < 0 then
-    Lower := 0;
-  for I := List.Count - 1 downto Lower do
+  if List.Count > MaxURLHistory then
+    Count := MaxURLHistory
+  else
+    Count := List.Count;
+  for I := 0 to Count - 1 do
   begin
     Key := Format(sUrlHistoryItem, [I]);
     Reg.WriteString(Key, List[I]);
