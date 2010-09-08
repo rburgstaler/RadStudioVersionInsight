@@ -580,7 +580,7 @@ type
       Callback: TSvnListCallback = nil; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
     procedure List(const PathName: string; Depth: TSvnDepth; FetchLocks: Boolean; ListStrings: TStrings;
       DirEntryFields: DWORD = SVN_DIRENT_ALL; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
-    function MkDir(const Paths: TStringList; MakeParents: Boolean = False; SubPool: PAprPool = nil): Boolean;
+    function MkDir(const Paths: TStringList; const Comment: string; MakeParents: Boolean = False; SubPool: PAprPool = nil): Boolean;
     function MatchGlobalIgnores(const PathName: string; SubPool: PAprPool = nil): Boolean;
     procedure Move(SrcPathNames: TStrings; const DstPath: string; Force: Boolean = True; MoveAsChild: Boolean = False;
       MakeParents: Boolean = False; SubPool: PAprPool = nil);
@@ -3748,13 +3748,14 @@ begin
   end;
 end;
 
-function TSvnClient.MkDir(const Paths: TStringList;
+function TSvnClient.MkDir(const Paths: TStringList; const Comment: string;
   MakeParents: Boolean; SubPool: PAprPool): Boolean;
 var
   NewPool: Boolean;
   Targets: PAprArrayHeader;
   CommitInfo: PSvnCommitInfo;
   RevPropTable: PAprHash;
+  SvnError: PSvnError;
 begin
   Result := False;
   if not Assigned(Paths) or (Paths.Count = 0) then
@@ -3768,8 +3769,16 @@ begin
     Targets := StringListToAprArray(Paths, SubPool);
     CommitInfo := nil;
     RevPropTable := nil;
-    SvnCheck(svn_client_mkdir3(CommitInfo, Targets, MakeParents, RevPropTable, FCtx, SubPool));
+    FCommitLogMessage := Comment;
+    SvnError := svn_client_mkdir3(CommitInfo, Targets, MakeParents, RevPropTable, FCtx, SubPool);
     Result := Assigned(CommitInfo);
+    if Assigned(SvnError) then
+    begin
+      if SvnError^.apr_err = SVN_ERR_FS_ALREADY_EXISTS then
+        svn_error_clear(SvnError)
+      else
+        RaiseSvnError(SvnError);
+    end;
   finally
     if NewPool then
       apr_pool_destroy(SubPool);
