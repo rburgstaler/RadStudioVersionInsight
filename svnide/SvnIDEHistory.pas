@@ -322,6 +322,7 @@ begin
     Item := TSvnItem.Create(FClient, nil, AFileName);
     try
       FItems.AddObject(Item.PathName, Item);
+      Item.Reload;
       Item.AsyncUpdate := TAsyncUpdate.Create(AsynchronousHistoryUpdater, TSvnFileHistory.Create(Item));
       Item.AsyncReloadHistory;
     except
