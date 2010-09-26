@@ -80,6 +80,7 @@ object SvnCommitFrame: TSvnCommitFrame
           WidthType = (
             -2)
         end>
+      MultiSelect = True
       ReadOnly = True
       RowSelect = True
       PopupMenu = CommitMenu

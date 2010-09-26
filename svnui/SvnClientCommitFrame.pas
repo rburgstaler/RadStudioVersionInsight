@@ -37,7 +37,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls, svn_client, Generics.Collections, ActnList, Menus,
-  ExtCtrls, SvnUITypes, SvnUIUtils, Clipbrd, Generics.Defaults, SvnImages;
+  ExtCtrls, SvnUITypes, SvnUIUtils, Clipbrd, Generics.Defaults, SvnImages, SvnTree;
 
 type
   PSvnListViewItem = ^TSvnListViewItem;
@@ -262,28 +262,46 @@ procedure TSvnCommitFrame.AddActionExecute(Sender: TObject);
   end;
 
 var
+  I, StartIdx: Integer;
   SvnListViewItem: TSvnListViewItem;
 begin
-  SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-  if CheckAddParents(SvnListViewItem) then
+  if Files.SelCount > 0 then
   begin
-    if FAddCallBack(SvnListViewItem.FPathName) then
-    begin
-      SvnListViewItem.FTextStatus := svnWcStatusAdded;
-      SvnListViewItem.Checked := True;
-    end;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if (SvnListViewItem.FTextStatus = svnWcStatusUnversioned) and CheckAddParents(SvnListViewItem) then
+        begin
+          if FAddCallBack(SvnListViewItem.FPathName) then
+          begin
+            SvnListViewItem.FTextStatus := svnWcStatusAdded;
+            SvnListViewItem.Checked := True;
+          end;
+        end;
+      end;
+    RebuildList;
   end;
-  RebuildList;
 end;
 
 procedure TSvnCommitFrame.AddActionUpdate(Sender: TObject);
 var
-  SvnListViewItem: TSvnListViewItem;
+  I, StartIdx: Integer;
+  AddState: Boolean;
 begin
-  if Assigned(Files.Selected) then
+  if Files.SelCount > 0 then
   begin
-    SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-    AddAction.Visible := SvnListViewItem.FTextStatus = svnWcStatusUnversioned;
+    AddState := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+        if FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]].FTextStatus = svnWcStatusUnversioned then
+        begin
+          AddState := True;
+          Break;
+        end;
+    AddAction.Visible := AddState;
   end
   else
     AddAction.Visible := False;
@@ -387,13 +405,26 @@ end;
 
 procedure TSvnCommitFrame.DiffActionUpdate(Sender: TObject);
 var
+  I, StartIdx: Integer;
+  DiffState: Boolean;
   SvnListViewItem: TSvnListViewItem;
 begin
-  if Assigned(Files.Selected) then
+  if Files.SelCount > 0 then
   begin
-    SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-    DiffAction.Enabled := not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded])
-      and not (SvnListViewItem.Directory);
+    DiffState := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded])
+          and not SvnListViewItem.Directory then
+        begin
+          DiffState := True;
+          Break;
+        end;
+      end;
+    DiffAction.Enabled := DiffState;
   end
   else
     DiffAction.Enabled := False;
@@ -401,14 +432,20 @@ end;
 
 procedure TSvnCommitFrame.DoDiff(Sender: TObject);
 var
+  I, StartIdx: Integer;
   SvnListViewItem: TSvnListViewItem;
 begin
-  if Assigned(Files.Selected) then
+  if Files.SelCount > 0 then
   begin
-    SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-    if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded])
-      and not (SvnListViewItem.Directory) then
-      DiffCallBack(SvnListViewItem.FPathName);
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded])
+          and not SvnListViewItem.Directory then
+          DiffCallBack(SvnListViewItem.FPathName);
+      end;
   end;
 end;
 
@@ -574,8 +611,6 @@ begin
   else
   if Files.Focused and (Files.SelCount > 0) then
   begin
-    //TODO: sesCanSelectAll requires adjustments for Revert, the state of
-    // the Difference menu item and of the Files.MultiSelect property
     Result := [sesCanCopy];
     if Files.MultiSelect then
       Include(Result, sesCanSelectAll);
@@ -729,7 +764,7 @@ end;
 
 function TSvnCommitFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
 var
-  I: Integer;
+  I, StartIdx: Integer;
   SL: TStringList;
 begin
   if Comment.Focused then
@@ -744,7 +779,8 @@ begin
     begin
       SL := TStringList.Create;
       try
-        for I := 0 to Files.Items.Count - 1 do
+        StartIdx := Files.Selected.Index;
+        for I := StartIdx to Files.Items.Count - 1 do
           if Files.Items[I].Selected then //path + filename
             SL.Add(Files.Items[I].SubItems[0] + Files.Items[I].Caption);
         Clipboard.AsText := SL.Text;
@@ -809,115 +845,241 @@ end;
 
 procedure TSvnCommitFrame.ResolveActionExecute(Sender: TObject);
 var
+  I, StartIdx: Integer;
   SvnListViewItem: TSvnListViewItem;
 begin
-  SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-  FResolveCallBack(SvnListViewItem.FPathName);
-  SvnListViewItem.FTextStatus := svnWcStatusModified;
-  SvnListViewItem.Checked := True;
-  RebuildList;
+  if Files.SelCount > 0 then
+  begin
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if SvnListViewItem.TextStatus = svnWcStatusConflicted then
+        begin
+          FResolveCallBack(SvnListViewItem.FPathName);
+          SvnListViewItem.FTextStatus := svnWcStatusModified;
+          SvnListViewItem.Checked := True;
+        end;
+      end;
+    RebuildList;
+  end;
 end;
 
 procedure TSvnCommitFrame.ResolveActionUpdate(Sender: TObject);
 var
-  SvnListViewItem: TSvnListViewItem;
+  I, StartIdx: Integer;
+  ResolveState: Boolean;
 begin
-  if Assigned(Files.Selected) then
+  if Files.SelCount > 0 then
   begin
-    SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-    ResolveAction.Visible := SvnListViewItem.FTextStatus = svnWcStatusConflicted;
+    ResolveState := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        if FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]].FTextStatus = svnWcStatusConflicted then
+        begin
+          ResolveState := True;
+          Break;
+        end;
+      end;
+    ResolveAction.Visible := ResolveState;
   end
   else
     ResolveAction.Visible := False;
 end;
 
+type
+  TSvnTreeCommitData = class(TSvnTreeData)
+    ListItem: TSvnListViewItem;
+    Selected: Boolean;
+  end;
+
+  TRevertData = class(TObject)
+  private
+    FListItem: TSvnListViewItem;
+    FListItems: TList<TSvnListViewItem>;
+    FRecursive: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property ListItem: TSvnListViewItem read FListItem write FListItem;
+    property ListItems: TList<TSvnListViewItem> read FListItems;
+    property Recursive: Boolean read FRecursive write FRecursive;
+  end;
+
+{ TRevertData }
+
+constructor TRevertData.Create;
+begin
+  inherited Create;
+  FListItems := TList<TSvnListViewItem>.Create;
+end;
+
+destructor TRevertData.Destroy;
+begin
+  FListItems.Free;
+  inherited Destroy;
+end;
+
 procedure TSvnCommitFrame.RevertActionExecute(Sender: TObject);
 var
   SvnListViewItem: TSvnListViewItem;
-  S, FileName: string;
-  I, AdditionalDirCount, AdditionalFileCount: Integer;
-  FilesToRevert: TList<TSvnListViewItem>;
+  S: string;
+  I, J, AdditionalDirCount, AdditionalFileCount: Integer;
+  FilesToRevertText: TList<TSvnListViewItem>;
   NewState: TSvnWCStatusKind;
+  UpdateList: Boolean;
+  SvnRoot: TSvnRootNode<TSvnTreeCommitData>;
+  ItemsToRevert: TObjectList<TRevertData>;
+  RevertData: TRevertData;
+  SvnCommitData: TSvnTreeCommitData;
 begin
-  if Files.Selected <> nil then
+  if Files.SelCount > 0 then
   begin
-    SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-    FileName := SvnListViewItem.FPathName;
-    if SvnListViewItem.Directory and (SvnListViewItem.TextStatus = svnWcStatusAdded) then
-    begin
-      FilesToRevert := TList<TSvnListViewItem>.Create;
-      try
-        FilesToRevert.Add(SvnListViewItem);
-        for I := 0 to FItemList.Count - 1 do
-          if (Pos(FileName, FItemList[I].PathName) = 1) and (FItemList[I] <> SvnListViewItem) and
-            FItemList[I].Visible and (FItemList[I].TextStatus <> svnWcStatusUnversioned) then
-            FilesToRevert.Add(FItemList[I]);
-        FilesToRevert.Sort(TSvnListViewItemPathComparer.Create);
-        S := sRevertDirAddCheck;
-        if FilesToRevert.Count <= 7 then
-          for I := 0 to FilesToRevert.Count - 1 do
-            S := S + sLineBreak + FilesToRevert[I].PathName
-        else
+    FilesToRevertText := TList<TSvnListViewItem>.Create;
+    ItemsToRevert := TObjectList<TRevertData>.Create;
+    SvnRoot := TSvnRootNode<TSvnTreeCommitData>.Create;
+    try
+      for I := 0 to Files.Items.Count - 1 do
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if SvnListViewItem.Visible and (SvnListViewItem.TextStatus <> svnWcStatusUnversioned) then
         begin
-          AdditionalDirCount := 0;
-          AdditionalFileCount := 0;
-          for I := 0 to FilesToRevert.Count - 1 do
+          if SvnListViewItem.Directory then
+            SvnCommitData := SvnRoot.AddDir(SvnListViewItem.PathName).Data
+          else
+            SvnCommitData := SvnRoot.AddFile(SvnListViewItem.PathName).Data;
+          SvnCommitData.ListItem := SvnListViewItem;
+          SvnCommitData.Selected := Files.Items[I].Selected;
+        end;
+      end;
+      SvnRoot.WalkThrough(procedure(ANode: TObject; AData: TSvnTreeCommitData; var AWalkModes: TSvnRootNodeWalkModes)
+        begin
+          if wmInfo in AWalkModes then
+            FilesToRevertText.Add(AData.ListItem)
+          else
+          if AData.Selected then
           begin
-            if I <= 4 then
-              S := S + sLineBreak + FilesToRevert[I].PathName
+            if (AData.Kind = dkFolder) and (AData.ListItem.TextStatus = svnWcStatusAdded) then
+            begin
+              Include(AWalkModes, wmInfo);
+              ItemsToRevert.Add(TRevertData.Create);
+              RevertData := ItemsToRevert.Last;
+              RevertData.ListItem := AData.ListItem;
+              RevertData.ListItems.Add(AData.ListItem);
+              RevertData.Recursive := True;
+              FilesToRevertText.Add(AData.ListItem);
+              SvnRoot.WalkThrough(procedure(AChildNode: TObject; AChildData: TSvnTreeCommitData;
+                  var AChildWalkModes: TSvnRootNodeWalkModes)
+                begin
+                  RevertData.ListItems.Add(AChildData.ListItem);
+                end, ANode);
+            end
             else
             begin
-              if FilesToRevert[I].Directory then
-                Inc(AdditionalDirCount)
-              else
-                Inc(AdditionalFileCount);
+              ItemsToRevert.Add(TRevertData.Create);
+              RevertData := ItemsToRevert.Last;
+              RevertData.ListItem := AData.ListItem;
+              RevertData.Recursive := False;
+              FilesToRevertText.Add(AData.ListItem);
             end;
           end;
-          if AdditionalDirCount > 0 then
-            S := S + sLineBreak + Format(sRevertDirMoreDirectories, [AdditionalDirCount]);
-          if AdditionalFileCount > 0 then
-            S := S + sLineBreak + Format(sRevertDirMoreFiles, [AdditionalFileCount]);
-        end;
-        if MessageDlg(S, mtConfirmation, mbYesNo, 0) = mrYes then
-        begin
-          if RevertCallBack(FileName, True, NewState) and (NewState = svnWcStatusUnversioned) then
-          begin
-            for I := 0 to FilesToRevert.Count - 1 do
-            begin
-              FilesToRevert[I].FTextStatus := svnWcStatusUnversioned;
-              FilesToRevert[I].Checked := False;
-            end;
-            RebuildList;
-            UpdateCommitButton;
-          end;
-        end;
-      finally
-        FilesToRevert.Free;
-      end;
-    end
-    else if MessageDlg(sRevertCheck, mtConfirmation, mbYesNo, 0) = mrYes then
-    begin
-      if RevertCallBack(FileName, False, NewState) then
+        end);
+
+      FilesToRevertText.Sort(TSvnListViewItemPathComparer.Create);
+      S := sRevertCheck;
+      if FilesToRevertText.Count <= 7 then
+        for I := 0 to FilesToRevertText.Count - 1 do
+          S := S + sLineBreak + Format('[%s] %s', [StatusKindStr(FilesToRevertText[I].TextStatus),
+            FilesToRevertText[I].PathName])
+      else
       begin
-        SvnListViewItem.FTextStatus := NewState;
-        SvnListViewItem.Visible := not (NewState in [svnWcStatusNone, svnWcStatusNormal]);
-        SvnListViewItem.Checked := False;
-        RebuildList;
-        UpdateCommitButton;
+        AdditionalDirCount := 0;
+        AdditionalFileCount := 0;
+        for I := 0 to FilesToRevertText.Count - 1 do
+        begin
+          if I <= 4 then
+            S := S + sLineBreak + Format('[%s] %s', [StatusKindStr(FilesToRevertText[I].TextStatus),
+              FilesToRevertText[I].PathName])
+          else
+          begin
+            if FilesToRevertText[I].Directory then
+              Inc(AdditionalDirCount)
+            else
+              Inc(AdditionalFileCount);
+          end;
+        end;
+        if AdditionalDirCount > 0 then
+          S := S + sLineBreak + Format(sRevertDirMoreDirectories, [AdditionalDirCount]);
+        if AdditionalFileCount > 0 then
+          S := S + sLineBreak + Format(sRevertDirMoreFiles, [AdditionalFileCount]);
       end;
+
+      if MessageDlg(S, mtConfirmation, mbYesNo, 0) = mrYes then
+      begin
+        UpdateList := False;
+        for I := 0 to ItemsToRevert.Count - 1 do
+          if ItemsToRevert[I].Recursive then
+          begin
+            if RevertCallBack(ItemsToRevert[I].ListItem.PathName, True, NewState) and
+              (NewState = svnWcStatusUnversioned) then
+            begin
+              UpdateList := True;
+              for J := 0 to ItemsToRevert[I].ListItems.Count - 1 do
+              begin
+                SvnListViewItem := ItemsToRevert[I].ListItems[J];
+                SvnListViewItem.FTextStatus := svnWcStatusUnversioned;
+                SvnListViewItem.Checked := False;
+              end;
+            end
+          end
+          else
+          if RevertCallBack(ItemsToRevert[I].ListItem.PathName, False, NewState) then
+          begin
+            UpdateList := True;
+            SvnListViewItem := ItemsToRevert[I].ListItem;
+            SvnListViewItem.FTextStatus := NewState;
+            SvnListViewItem.Visible := not (NewState in [svnWcStatusNone, svnWcStatusNormal]);
+            SvnListViewItem.Checked := False;
+          end;
+        if UpdateList then
+        begin
+          RebuildList;
+          UpdateCommitButton;
+        end;
+      end;
+    finally
+      SvnRoot.Free;
+      ItemsToRevert.Free;
+      FilesToRevertText.Free;
     end;
   end;
 end;
 
 procedure TSvnCommitFrame.RevertActionUpdate(Sender: TObject);
 var
+  I, StartIdx: Integer;
+  RevertState: Boolean;
   SvnListViewItem: TSvnListViewItem;
 begin
-  if Assigned(Files.Selected) then
+  if Files.SelCount > 0 then
   begin
-    SvnListViewItem := FItemList[FIndexList[Integer(Files.Selected.Data) - 1]];
-    RevertAction.Visible := (SvnListViewItem.FTextStatus <> svnWcStatusUnversioned)
-      and ((not SvnListViewItem.Directory) or (SvnListViewItem.FTextStatus = svnWcStatusAdded));
+    RevertState := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if (SvnListViewItem.FTextStatus <> svnWcStatusUnversioned)
+          and ((not SvnListViewItem.Directory) or (SvnListViewItem.FTextStatus = svnWcStatusAdded)) then
+        begin
+          RevertState := True;
+          Break;
+        end;
+      end;
+    RevertAction.Visible := RevertState;
   end
   else
     RevertAction.Visible := False;
