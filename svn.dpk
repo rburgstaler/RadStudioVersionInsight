@@ -34,6 +34,7 @@ contains
   apr in 'apr.pas',
   svn_client in 'svn_client.pas',
   SvnClient in 'SvnClient.pas',
-  svnconst in 'svnconst.pas';
+  svnconst in 'svnconst.pas',
+  SvnTree in 'SvnTree.pas';
 
 end.

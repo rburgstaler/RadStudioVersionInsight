@@ -58,6 +58,7 @@
 			<DCCReference Include="svn_client.pas"/>
 			<DCCReference Include="SvnClient.pas"/>
 			<DCCReference Include="svnconst.pas"/>
+			<DCCReference Include="SvnTree.pas"/>
 			<None Include="RAD Studio Version Insight MPL License.txt"/>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>
