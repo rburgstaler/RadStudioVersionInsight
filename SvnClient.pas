@@ -3535,7 +3535,8 @@ begin
     try
       SvnCheck(svn_ra_initialize(FPool));
       SvnCheck(svn_client_create_context(FCtx, FPool));
-
+      if GetEnvironmentVariable('ASP_DOT_NET_HACK') <> '' then
+        SvnCheck(svn_wc_set_adm_dir('_svn', FPool));
       FCtx^.notify_func := SvnContextNotify;
       FCtx^.notify_baton := Self;
       FCtx^.progress_func := SvnContextProgress;
