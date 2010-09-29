@@ -140,20 +140,22 @@ object SvnLogFrame: TSvnLogFrame
       Columns = <
         item
           Caption = 'Action'
-          Width = -1
+          Width = -2
           WidthType = (
-            -1)
+            -2)
         end
         item
           Caption = 'File'
-          Width = -1
+          Width = -2
           WidthType = (
-            -1)
+            -2)
         end>
+      OwnerData = True
       ReadOnly = True
       RowSelect = True
       TabOrder = 0
       ViewStyle = vsReport
+      OnData = FilesData
     end
   end
   object CenterPanel: TPanel

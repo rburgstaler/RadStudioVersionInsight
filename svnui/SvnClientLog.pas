@@ -81,6 +81,7 @@ type
     procedure NextClick(Sender: TObject);
     procedure SearchKeyPress(Sender: TObject; var Key: Char);
     procedure SearchRightButtonClick(Sender: TObject);
+    procedure FilesData(Sender: TObject; Item: TListItem);
   protected
     FCount: Integer;
     FDoingSearch: Boolean;
@@ -275,6 +276,8 @@ begin
     try
       FDoingSearch := True;
       Revisions.Clear;
+      Files.Clear;
+      Comment.Lines.Text := '';
       for I := 0 to FRevisionList.Count - 1 do
         if CheckItem(FRevisionList[I]) then
           AddRevisionToListView(FRevisionList[I]);
@@ -288,6 +291,25 @@ end;
 procedure TSvnLogFrame.EndUpdate;
 begin
   Revisions.Items.EndUpdate;
+end;
+
+procedure TSvnLogFrame.FilesData(Sender: TObject; Item: TListItem);
+var
+  S: string;
+  FilesSL: TStringList;
+begin
+  if (Revisions.Selected <> nil) and (Revisions.Selected.Data <> nil) then
+  begin
+    FilesSL := TStringList(Revisions.Selected.Data);
+    S := System.Copy(FilesSL[Item.Index], 2, MaxInt);
+    case FilesSL[Item.Index][1] of
+      'M': Item.Caption := sModified;
+      'A': Item.Caption := sAdded;
+      'D': Item.Caption := sDeleted;
+      'R': Item.Caption := sReplaced;
+    end;
+    Item.SubItems.Add(S);
+  end;
 end;
 
 function TSvnLogFrame.GetCommentColumn: Integer;
@@ -481,32 +503,48 @@ end;
 procedure TSvnLogFrame.RevisionsSelectItem(Sender: TObject; Item: TListItem;
   Selected: Boolean);
 var
-  I: Integer;
+  I, W: Integer;
+  FilesSL: TStringList;
   S: string;
-  ListItem: TListItem;
+  ColumnWidths: array [0..1] of Integer;
 begin
-  if Revisions.Selected <> nil then
-  begin
-    Comment.Lines.Text := Revisions.Selected.SubItems[2];
-    Files.Items.BeginUpdate;
-    try
-    Files.Clear;
-    if Revisions.Selected.Data <> nil then
-      for I := 0 to TStringList(Revisions.Selected.Data).Count - 1 do
+  Files.Items.BeginUpdate;
+  try
+    Files.Items.Count := 0;
+    if Revisions.Selected <> nil then
+    begin
+      Comment.Lines.Text := Revisions.Selected.SubItems[2];
+      if Revisions.Selected.Data <> nil then
       begin
-        S := System.Copy(TStringList(Revisions.Selected.Data)[I], 2, MaxInt);
-        ListItem := Files.Items.Add;
-        case TStringList(Revisions.Selected.Data)[I][1] of
-          'M': ListItem.Caption := sModified;
-          'A': ListItem.Caption := sAdded;
-          'D': ListItem.Caption := sDeleted;
-          'R': ListItem.Caption := sReplaced;
+        FilesSL := TStringList(Revisions.Selected.Data);
+        Files.Items.Count := FilesSL.Count;
+        //get max column widths
+        for I := Low(ColumnWidths) to High(ColumnWidths) do
+          ColumnWidths[I] := 0;
+        for I := 0 to FilesSL.Count - 1 do
+        begin
+          S := System.Copy(FilesSL[I], 2, MaxInt);
+          W := Files.StringWidth(S);
+          if W > ColumnWidths[1] then
+            ColumnWidths[1] := W;
+          case FilesSL[I][1] of
+            'M': S := sModified;
+            'A': S := sAdded;
+            'D': S := sDeleted;
+            'R': S := sReplaced;
+          end;
+          W := Files.StringWidth(S);
+          if W > ColumnWidths[0] then
+            ColumnWidths[0] := W;
         end;
-        ListItem.SubItems.Add(S);
+        //set columns widths including a margin (using 14 as margin, because this is the observed
+        // margin with themes (no themes: first column 8, other columns 12; themes: first 10, other 14)
+        for I := Low(ColumnWidths) to High(ColumnWidths) do
+          Files.Columns[I].Width := ColumnWidths[I] + 14;
       end;
-    finally
-      Files.Items.EndUpdate;
     end;
+  finally
+    Files.Items.EndUpdate;
   end;
 end;
 
