@@ -36,7 +36,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Menus, ActnList;
+  Dialogs, StdCtrls, CommCtrl, ComCtrls, ExtCtrls, Menus, ActnList;
 
 type
 
@@ -61,6 +61,12 @@ type
     procedure OkClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure HelpClick(Sender: TObject);
+  private
+    const
+      TextMarginUndefined = -1;
+    var
+      FColumnWidths: array [0..1] of Integer;
+      FColumnTextMargins: array [0..1] of Integer;
   protected
     FCompleted: Boolean;
     FAbortCallBack: TAbortCallBack;
@@ -103,13 +109,41 @@ end;
 
 procedure TUpdateDialog.Add(const FileName, Action: string;
   Conflicted: Boolean);
+
+  //emulation of LVSCW_AUTOSIZE
+  procedure UpdateColumnWidth(AColumn: TListColumn; AItem: TListItem);
+  var
+    Index, ColumnWidth, TextWidth: Integer;
+    Text: string;
+  begin
+    Index := AColumn.Index;
+    if Index = 0 then
+      Text := AItem.Caption
+    else
+      Text := AItem.SubItems[Index - 1];
+    //get the width for the column text (does not include the text margin)
+    TextWidth := Files.StringWidth(Text);
+    //get the text margin of the column by using LVSCW_AUTOSIZE once
+    if FColumnTextMargins[Index] = TextMarginUndefined then
+    begin
+      AColumn.Width := LVSCW_AUTOSIZE;
+      ColumnWidth := ListView_GetColumnWidth(Files.Handle, Index);
+      FColumnTextMargins[Index] := ColumnWidth - TextWidth;
+      FColumnWidths[Index] := 0;
+    end;
+    TextWidth := TextWidth + FColumnTextMargins[Index];
+    //compare cached column width with width for current column text + margin
+    if FColumnWidths[Index] < TextWidth then
+    begin
+      AColumn.Width := TextWidth;
+      FColumnWidths[Index] := TextWidth;
+    end;
+  end;
+
 var
   Item: TListItem;
   I: Integer;
 begin
-  if Files.Items.Count = 0 then
-    for I := 0 to Files.Columns.Count - 1 do
-      Files.Columns[I].Width := -1;
   Item := Files.Items.Add;
   Item.Caption := Action;
   Item.SubItems.Add(FileName);
@@ -120,6 +154,8 @@ begin
   //Autoscoll
   if not Conflicted then
     Item.MakeVisible(False);
+  for I := 0 to Files.Columns.Count - 1 do
+    UpdateColumnWidth(Files.Columns[I], Item);
 end;
 
 procedure TUpdateDialog.Completed;
@@ -142,9 +178,13 @@ begin
 end;
 
 procedure TUpdateDialog.FormCreate(Sender: TObject);
+var
+  I: Integer;
 begin
   Constraints.MinHeight := MulDiv(350, Screen.PixelsPerInch, 96);
   Constraints.MinWidth := MulDiv(450, Screen.PixelsPerInch, 96);
+  for I := Low(FColumnTextMargins) to High(FColumnTextMargins) do
+    FColumnTextMargins[I] := TextMarginUndefined;
 end;
 
 procedure TUpdateDialog.HelpClick(Sender: TObject);
