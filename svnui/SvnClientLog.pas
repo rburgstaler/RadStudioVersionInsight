@@ -86,7 +86,7 @@ type
     FCount: Integer;
     FDoingSearch: Boolean;
     FLoadRevisionsCallBack: TLoadRevisionsCallBack;
-    FRevisionList: TList<TRevision>;
+    FRevisionList: TObjectList<TRevision>;
     FSaveCursor: TCursor;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
@@ -224,7 +224,7 @@ begin
   inherited;
   Name := Format('%s_%d', [Name, FUseCount]);
   Inc(FUseCount);
-  FRevisionList := TList<TRevision>.Create;
+  FRevisionList := TObjectList<TRevision>.Create;
   FDoingSearch := False;
   FCount := DefaultRange;
 end;
@@ -474,8 +474,7 @@ begin
   Application.ProcessMessages;
   Files.Clear;
   Comment.Lines.Text := '';
-  FRevisionList.Free;
-  FRevisionList := TList<TRevision>.Create;
+  FRevisionList.Clear;
   Next.Enabled := False;
   Refresh.Enabled := False;
   FLoadRevisionsCallBack(-1, FCount);
