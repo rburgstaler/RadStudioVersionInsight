@@ -36,8 +36,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Generics.Collections, ToolWin, ImgList,
-  SvnUITypes;
+  Dialogs, StdCtrls, CommCtrl, ComCtrls, ExtCtrls, Generics.Collections, ToolWin,
+  ImgList, SvnUITypes;
 
 const
   DefaultRange = 100;
@@ -82,11 +82,14 @@ type
     procedure SearchKeyPress(Sender: TObject; var Key: Char);
     procedure SearchRightButtonClick(Sender: TObject);
     procedure FilesData(Sender: TObject; Item: TListItem);
+    procedure RevisionsData(Sender: TObject; Item: TListItem);
   protected
     FCount: Integer;
     FDoingSearch: Boolean;
     FLoadRevisionsCallBack: TLoadRevisionsCallBack;
+    FRevisionColumnWidths: array [0..3] of Integer;
     FRevisionList: TObjectList<TRevision>;
+    FVisibleRevisions: TList<TRevision>;
     FSaveCursor: TCursor;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
@@ -94,6 +97,7 @@ type
     procedure DoSearch(const Text: string);
     function GetCommentColumn: Integer;
     function GetSvnEditState: TSvnEditState;
+    procedure InitRevisionColumnWidths;
     procedure RestoreRevisions;
   public
     constructor Create(AOwner: TComponent); override;
@@ -158,20 +162,39 @@ end;
 
 procedure TSvnLogFrame.AddRevisionToListView(ARevision: TRevision);
 var
-  ListItem: TListItem;
-  I: Integer;
+  I, W: Integer;
+  S: string;
 begin
-  if Revisions.Items.Count = 0 then
+  if FVisibleRevisions.Count = 0 then
+    InitRevisionColumnWidths;
+  FVisibleRevisions.Add(ARevision);
+  Revisions.Items.Count := FVisibleRevisions.Count;
+  //emulation of LVSCW_AUTOSIZE
+  for I := Low(FRevisionColumnWidths) to High(FRevisionColumnWidths) do
   begin
-    for I := 1 to Revisions.Columns.Count - 1 do
-      Revisions.Columns[I].Width := -1;
+    case I of
+      0: W := Revisions.StringWidth(ARevision.FRevision);
+      1: W := Revisions.StringWidth(ARevision.FAuthor);
+      2: W := Revisions.StringWidth(ARevision.FTime);
+      3: begin
+           S := ARevision.FComment;
+           //use only the first 259 chars for the column width, because a listview displays
+           // only the first 259 chars - see http://support.microsoft.com/kb/321104
+           if Length(S) > CBEMAXSTRLEN - 1 then
+             S := Copy(S, 1, CBEMAXSTRLEN - 1);
+           //the listview omitts line breaks and they would lead to a bigger string width
+           S := StringReplace(S, #10, '', [rfReplaceAll]);
+           W := Revisions.StringWidth(S);
+         end;
+      else
+        W := 0;
+    end;
+    if W > FRevisionColumnWidths[I] then
+    begin
+      FRevisionColumnWidths[I] := W;
+      Revisions.Columns[I].Width := W + 14;
+    end;
   end;
-  ListItem := Revisions.Items.Add;
-  ListItem.Caption := ARevision.FRevision;
-  ListItem.SubItems.Add(ARevision.FAuthor);
-  ListItem.SubItems.Add(ARevision.FTime);
-  ListItem.SubItems.Add(ARevision.FComment);
-  ListItem.Data := ARevision.FFiles;
 end;
 
 procedure TSvnLogFrame.BeginUpdate;
@@ -225,12 +248,16 @@ begin
   Name := Format('%s_%d', [Name, FUseCount]);
   Inc(FUseCount);
   FRevisionList := TObjectList<TRevision>.Create;
+  FVisibleRevisions := TList<TRevision>.Create;
   FDoingSearch := False;
   FCount := DefaultRange;
+  InitRevisionColumnWidths;
 end;
 
 destructor TSvnLogFrame.Destroy;
 begin
+  Revisions.Clear;//there is no sanity check in RevisionsData and freeing FVisibleRevisions would lead to an AV
+  FVisibleRevisions.Free;
   FRevisionList.Free;
   inherited;
 end;
@@ -277,6 +304,7 @@ begin
       FDoingSearch := True;
       Revisions.Clear;
       Files.Clear;
+      FVisibleRevisions.Clear;
       Comment.Lines.Text := '';
       for I := 0 to FRevisionList.Count - 1 do
         if CheckItem(FRevisionList[I]) then
@@ -340,6 +368,17 @@ begin
   end
   else
     Result := [];
+end;
+
+procedure TSvnLogFrame.InitRevisionColumnWidths;
+var
+  I: Integer;
+begin
+  for I := Low(FRevisionColumnWidths) to High(FRevisionColumnWidths) do
+  begin
+    FRevisionColumnWidths[I] := Revisions.StringWidth(Revisions.Columns[I].Caption);
+    Revisions.Columns[I].Width := FRevisionColumnWidths[I] + 14;
+  end;
 end;
 
 procedure TSvnLogFrame.NextClick(Sender: TObject);
@@ -474,6 +513,7 @@ begin
   Application.ProcessMessages;
   Files.Clear;
   Comment.Lines.Text := '';
+  FVisibleRevisions.Clear;
   FRevisionList.Clear;
   Next.Enabled := False;
   Refresh.Enabled := False;
@@ -490,6 +530,7 @@ begin
     Revisions.Items.BeginUpdate;
     try
       Revisions.Items.Clear;
+      FVisibleRevisions.Clear;
       for I := 0 to FRevisionList.Count - 1 do
         AddRevisionToListView(FRevisionList[I]);
     finally
@@ -497,6 +538,18 @@ begin
     end;
     Search.RightButton.Visible := False;
   end;
+end;
+
+procedure TSvnLogFrame.RevisionsData(Sender: TObject; Item: TListItem);
+var
+  Revision: TRevision;
+begin
+  Revision := FVisibleRevisions[Item.Index];
+  Item.Caption := Revision.FRevision;
+  Item.SubItems.Add(Revision.FAuthor);
+  Item.SubItems.Add(Revision.FTime);
+  Item.SubItems.Add(Revision.FComment);
+  Item.Data := Revision.FFiles;
 end;
 
 procedure TSvnLogFrame.RevisionsSelectItem(Sender: TObject; Item: TListItem;

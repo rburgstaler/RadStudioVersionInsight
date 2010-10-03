@@ -68,10 +68,12 @@ object SvnLogFrame: TSvnLogFrame
           WidthType = (
             -2)
         end>
+      OwnerData = True
       ReadOnly = True
       RowSelect = True
       TabOrder = 0
       ViewStyle = vsReport
+      OnData = RevisionsData
       OnSelectItem = RevisionsSelectItem
     end
     object ToolBar1: TToolBar
