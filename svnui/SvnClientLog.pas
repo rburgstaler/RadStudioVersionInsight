@@ -230,7 +230,9 @@ procedure TSvnLogFrame.SearchKeyUp(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if Search.Text = '' then
-    RestoreRevisions;
+    RestoreRevisions
+  else
+    DoSearch(Search.Text);
 end;
 
 procedure TSvnLogFrame.StartAsync;
