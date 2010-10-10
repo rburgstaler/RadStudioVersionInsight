@@ -185,10 +185,11 @@ begin
     FRecentComments.Move(Idx, 0)
   else
     FRecentComments.Insert(0, Comment.Text);
-  if (FURLHistory.Count > 0) and (FURLHistory[FURLHistory.Count - 1] <> URL.Text) then
-    FURLHistory.Insert(0, URL.Text)
-  else if FURLHistory.Count = 0 then
-    FURLHistory.Add(URL.Text);
+  Idx := FURLHistory.IndexOf(URL.Text);
+  if Idx <> -1 then
+    FURLHistory.Move(Idx, 0)
+  else
+    FURLHistory.Insert(0, URL.Text);
   if Assigned(FImportCallBack) then
   begin
     if FImportCallBack(URL.Text, Comment.Text, FRecentComments, FURLHistory) then
