@@ -668,18 +668,22 @@ var
   I: Integer;
 begin
   Reg := TRegistry.Create;
-  BaseKey := BaseRegKey + sRecentComments;
-  if not Reg.KeyExists(BaseKey) then
-    Exit;
-  Reg.OpenKeyReadOnly(BaseKey);
-  for I := 0 to MaxRecentComments - 1 do
-  begin
-    Key := Format(sComment, [I]);
-    S := Reg.ReadString(Key);
-    if S = '' then
-      Break
-    else
-      RecentComments.Add(S);
+  try
+    BaseKey := BaseRegKey + sRecentComments;
+    if not Reg.KeyExists(BaseKey) then
+      Exit;
+    Reg.OpenKeyReadOnly(BaseKey);
+    for I := 0 to MaxRecentComments - 1 do
+    begin
+      Key := Format(sComment, [I]);
+      S := Reg.ReadString(Key);
+      if S = '' then
+        Break
+      else
+        RecentComments.Add(S);
+    end;
+  finally
+    Reg.Free;
   end;
 end;
 
@@ -692,15 +696,19 @@ var
   WriteCount: Integer;
 begin
   Reg := TRegistry.Create;
-  BaseKey := BaseRegKey + sRecentComments;
-  Reg.OpenKey(BaseKey, True);
-  WriteCount := MaxRecentComments;
-  if WriteCount > RecentComments.Count then
-    WriteCount := RecentComments.Count;
-  for I := 0 to WriteCount - 1 do
-  begin
-    Key := Format(sComment, [I]);
-    Reg.WriteString(Key, RecentComments[I]);
+  try
+    BaseKey := BaseRegKey + sRecentComments;
+    Reg.OpenKey(BaseKey, True);
+    WriteCount := MaxRecentComments;
+    if WriteCount > RecentComments.Count then
+      WriteCount := RecentComments.Count;
+    for I := 0 to WriteCount - 1 do
+    begin
+      Key := Format(sComment, [I]);
+      Reg.WriteString(Key, RecentComments[I]);
+    end;
+  finally
+    Reg.Free;
   end;
 end;
 

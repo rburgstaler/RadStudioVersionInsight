@@ -385,18 +385,22 @@ var
   I: Integer;
 begin
   Reg := TRegistry.Create;
-  BaseKey := BaseRegKey + sURLHistory;
-  if not Reg.KeyExists(BaseKey) then
-    Exit;
-  Reg.OpenKeyReadOnly(BaseKey);
-  for I := 0 to MaxURLHistory - 1 do
-  begin
-    Key := Format(sUrlHistoryItem, [I]);
-    S := Reg.ReadString(Key);
-    if S = '' then
-      Break
-    else
-      List.Add(S);
+  try
+    BaseKey := BaseRegKey + sURLHistory;
+    if not Reg.KeyExists(BaseKey) then
+      Exit;
+    Reg.OpenKeyReadOnly(BaseKey);
+    for I := 0 to MaxURLHistory - 1 do
+    begin
+      Key := Format(sUrlHistoryItem, [I]);
+      S := Reg.ReadString(Key);
+      if S = '' then
+        Break
+      else
+        List.Add(S);
+    end;
+  finally
+    Reg.Free;
   end;
 end;
 
@@ -409,16 +413,20 @@ var
   Count: Integer;
 begin
   Reg := TRegistry.Create;
-  BaseKey := BaseRegKey + sURLHistory;
-  Reg.OpenKey(BaseKey, True);
-  if List.Count > MaxURLHistory then
-    Count := MaxURLHistory
-  else
-    Count := List.Count;
-  for I := 0 to Count - 1 do
-  begin
-    Key := Format(sUrlHistoryItem, [I]);
-    Reg.WriteString(Key, List[I]);
+  try
+    BaseKey := BaseRegKey + sURLHistory;
+    Reg.OpenKey(BaseKey, True);
+    if List.Count > MaxURLHistory then
+      Count := MaxURLHistory
+    else
+      Count := List.Count;
+    for I := 0 to Count - 1 do
+    begin
+      Key := Format(sUrlHistoryItem, [I]);
+      Reg.WriteString(Key, List[I]);
+    end;
+  finally
+    Reg.Free;
   end;
 end;
 
