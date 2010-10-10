@@ -66,7 +66,7 @@ type
 implementation
 
 uses SysUtils, SvnIDEConst, ToolsApi, SvnClientLog, SvnClient, DesignIntf, Forms,
-  SvnUITypes, SvnIDEUtils, ExtCtrls;
+  SvnUITypes, SvnIDEUtils, ExtCtrls, Graphics;
 
 const
   sPMVLogParent = 'SvnLogParent';
@@ -110,6 +110,7 @@ type
     procedure Completed;
     { CallBacks }
     procedure LoadRevisionsCallBack(FirstRevision: Integer; Count: Integer);
+    function FileColorCallBack(Action: Char): TColor;
   public
     constructor Create(SvnClient: TSvnClient; const ARootPath: string);
     destructor Destroy; override;
@@ -237,9 +238,15 @@ begin
   end;
 end;
 
+function TLogView.FileColorCallBack(Action: Char): TColor;
+begin
+  Result := IDEClient.Colors.GetLogActionColor(Action);
+end;
+
 procedure TLogView.FrameCreated(AFrame: TCustomFrame);
 begin
   FSvnLogFrame := TSvnLogFrame(AFrame);
+  FSvnLogFrame.FileColorCallBack := FileColorCallBack;
   FSvnLogFrame.LoadRevisionsCallBack := LoadRevisionsCallBack;
   FSvnItem := TSvnItem.Create(FSvnClient, nil, FRootPath, True);
   FSvnItem.AsyncUpdate := Self;

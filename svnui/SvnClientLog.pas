@@ -57,6 +57,7 @@ type
   end;
 
   TLoadRevisionsCallBack = procedure(FirstRevision: Integer; Count: Integer) of object;
+  TFileColorCallBack = function(Action: Char): TColor of object;
 
   TSvnLogFrame = class(TFrame)
     Splitter1: TSplitter;
@@ -83,9 +84,12 @@ type
     procedure SearchRightButtonClick(Sender: TObject);
     procedure FilesData(Sender: TObject; Item: TListItem);
     procedure RevisionsData(Sender: TObject; Item: TListItem);
+    procedure FilesCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   protected
     FCount: Integer;
     FDoingSearch: Boolean;
+    FFileColorCallBack: TFileColorCallBack;
     FLoadRevisionsCallBack: TLoadRevisionsCallBack;
     FRevisionColumnWidths: array [0..3] of Integer;
     FRevisionList: TObjectList<TRevision>;
@@ -109,6 +113,7 @@ type
     procedure StartAsync;
     procedure NextCompleted;
     function PerformEditAction(AEditAction: TSvnEditAction): Boolean;
+    property FileColorCallBack: TFileColorCallBack read FFileColorCallBack write FFileColorCallBack;
     property LoadRevisionsCallBack: TLoadRevisionsCallBack read FLoadRevisionsCallBack write FLoadRevisionsCallBack;
     property SvnEditState: TSvnEditState read GetSvnEditState;
   end;
@@ -321,6 +326,21 @@ end;
 procedure TSvnLogFrame.EndUpdate;
 begin
   Revisions.Items.EndUpdate;
+end;
+
+procedure TSvnLogFrame.FilesCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  TextColor: TColor;
+begin
+  DefaultDraw := True;
+  if Assigned(FFileColorCallBack) and
+    (Revisions.Selected <> nil) and (Revisions.Selected.Data <> nil) then
+  begin
+    TextColor := FFileColorCallBack(TStringList(Revisions.Selected.Data)[Item.Index][1]);
+    if TextColor <> clNone then
+      Files.Canvas.Font.Color := TextColor;
+  end;
 end;
 
 procedure TSvnLogFrame.FilesData(Sender: TObject; Item: TListItem);

@@ -69,6 +69,7 @@ type
   TAddCallBack = function(const FileName: string): Boolean of object;
   TResolveCallBack = procedure(const FileName: string) of object;
   TGetFileStatusCallBack = procedure(const FileName: string; var SvnListViewItem: TSvnListViewItem) of object;
+  TFileColorCallBack = function(AItem: TSvnListViewItem): TColor of object;
 
   TSvnCommitFrame = class(TFrame)
     Label1: TLabel;
@@ -115,10 +116,13 @@ type
     procedure FilesKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FilesCustomDraw(Sender: TCustomListView; const ARect: TRect;
       var DefaultDraw: Boolean);
+    procedure FilesCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   protected
     FCommitCallBack: TCommitCallBack;
     FCloseCallBack: TCloseCallBack;
     FDiffCallBack: TDiffCallBack;
+    FFileColorCallBack: TFileColorCallBack;
     FRevertCallBack: TRevertCallBack;
     FAddCallBack: TAddCallBack;
     FResolveCallBack: TResolveCallBack;
@@ -157,6 +161,7 @@ type
     property CloseCallBack: TCloseCallBack read FCloseCallBack write FCloseCallBack;
     property CommitCallBack: TCommitCallBack read FCommitCallBack write FCommitCallBack;
     property DiffCallBack: TDiffCallBack read FDiffCallBack write FDiffCallBack;
+    property FileColorCallBack: TFileColorCallBack read FFileColorCallBack write FFileColorCallBack;
     property RevertCallBack: TRevertCallBack read FRevertCallBack write FRevertCallBack;
     property ResolveCallBack: TResolveCallBack read FResolveCallBack write FResolveCallBack;
     property GetFileStatusCallBack: TGetFileStatusCallBack read FGetFileStatusCallBack write FGetFileStatusCallBack;
@@ -487,6 +492,20 @@ begin
     Files.Canvas.TextRect(ItemRect, S, [tfCenter, tfWordBreak]);
   end;
   DefaultDraw := not FNoFiles;
+end;
+
+procedure TSvnCommitFrame.FilesCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  TextColor: TColor;
+begin
+  DefaultDraw := True;
+  if Assigned(FFileColorCallBack) then
+  begin
+    TextColor := FFileColorCallBack(FItemList[FIndexList[Integer(Item.Data) - 1]]);
+    if TextColor <> clNone then
+      Files.Canvas.Font.Color := TextColor;
+  end;
 end;
 
 procedure TSvnCommitFrame.FilesDblClick(Sender: TObject);

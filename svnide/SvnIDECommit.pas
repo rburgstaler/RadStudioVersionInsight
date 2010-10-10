@@ -85,7 +85,7 @@ implementation
 uses SysUtils, ToolsApi, Forms, DesignIntf, ComCtrls, Controls, SvnIDEConst,
   SvnClientCommitFrame, svn_client, FileHistoryAPI, IStreams,
   ActiveX, Dialogs, SvnIDEClean, SvnIDEMessageView, Registry, SvnUITypes,
-  SvnIDEUtils;
+  SvnIDEUtils, Graphics;
 
 const
   sPMVCommit = 'Commit';
@@ -135,6 +135,7 @@ type
     procedure CommitCallBack(const CommitList: TStringList;
       const Comment: string; const RecentComments: TStringList);
     procedure DiffCallBack(const FileName: string);
+    function FileColorCallBack(AItem: TSvnListViewItem): TColor;
     function RevertCallBack(const FileName: string; ARecursive: Boolean; var ANewTextStatus: TSvnWCStatusKind): Boolean;
     procedure CloseCallBack;
     function AddCallBack(const FileName: string): Boolean;
@@ -360,6 +361,11 @@ begin
   end;
 end;
 
+function TCommit.FileColorCallBack(AItem: TSvnListViewItem): TColor;
+begin
+  Result := IDEClient.Colors.GetStatusColor(AItem.TextStatus);
+end;
+
 procedure TCommit.FrameCreated(AFrame: TCustomFrame);
 
   // make sure that all files/paths are versioned
@@ -479,6 +485,7 @@ begin
       FSvnCommitFrame.AddCallBack := AddCallBack;
       FSvnCommitFrame.ResolveCallBack := ResolveCallBack;
       FSvnCommitFrame.GetFileStatusCallBack := GetFileStatusCallBack;
+      FSvnCommitFrame.FileColorCallBack := FileColorCallBack;
       if FFoundMissing then
         FSvnCommitFrame.HandleMissingFiles;
       RecentComments := TStringList.Create;

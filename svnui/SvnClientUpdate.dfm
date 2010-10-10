@@ -26,7 +26,6 @@ object UpdateDialog: TUpdateDialog
     BevelEdges = []
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitHeight = 598
     object Files: TListView
       AlignWithMargins = True
       Left = 3
@@ -72,7 +71,7 @@ object UpdateDialog: TUpdateDialog
       PopupMenu = PopupMenu
       TabOrder = 0
       ViewStyle = vsReport
-      ExplicitHeight = 592
+      OnCustomDrawItem = FilesCustomDrawItem
     end
   end
   object Panel3: TPanel
@@ -84,7 +83,6 @@ object UpdateDialog: TUpdateDialog
     BevelEdges = []
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitTop = 598
     DesignSize = (
       720
       41)

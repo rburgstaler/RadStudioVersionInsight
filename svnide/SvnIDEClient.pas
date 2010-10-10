@@ -40,13 +40,14 @@ unit SvnIDEClient;
 
 interface
 
-uses SvnClient, svn_client, Classes, SysUtils;
+uses SvnClient, svn_client, Classes, SysUtils, SvnIDEColors;
 
 type
 
   TSvnIDEClient = class
   private
     FHistoryProviderIndex: Integer;
+    FColors: TSvnColors;
     FSvnClient: TSvnClient;
     FSyncData: Pointer;
     FSvnInitialized: Boolean;
@@ -75,6 +76,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    property Colors: TSvnColors read FColors;
     function SvnInitialize: Boolean;
     property SvnClient: TSvnClient read GetSvnClient;
   end;
@@ -96,7 +98,7 @@ implementation
 uses ToolsApi, FileHistoryApi, Controls, Forms, Dialogs,
   SvnClientLoginPrompt, SvnClientSSLClientCertPrompt, SvnIDEMenus,
   SvnClientSSLServerTrustPrompt, SvnIDEHistory, SvnImages, SvnIDEConst,
-  Registry, SvnIDENotifier, SvnIDEClean;
+  Registry, SvnIDENotifier, SvnIDEClean, SvnIDEAddInOptions;
 
 const
  sURLHistory = 'URLHistory';
@@ -147,6 +149,7 @@ begin
   IDEClient := TSvnIDEClient.Create;
   RegisterMenus(IDEClient);
   RegisterFileNotification;
+  RegisterAddInOptions;
 end;
 
 { TSvnIDEClient }
@@ -154,6 +157,7 @@ end;
 constructor TSvnIDEClient.Create;
 begin
   inherited;
+  FColors := TSvnColors.Create;
   Initialize;
 end;
 
@@ -161,6 +165,7 @@ destructor TSvnIDEClient.Destroy;
 begin
   Unloading := True;
   Finalize;
+  FColors.Free;
   inherited;
 end;
 

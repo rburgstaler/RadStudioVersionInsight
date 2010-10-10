@@ -48,7 +48,9 @@ contains
   SvnIDEMessageView in 'SvnIDEMessageView.pas',
   SvnIDECheckout in 'SvnIDECheckout.pas',
   SvnIDEUtils in 'SvnIDEUtils.pas',
-  SvnIDERepoBrowser in 'SvnIDERepoBrowser.pas';
+  SvnIDERepoBrowser in 'SvnIDERepoBrowser.pas',
+  SvnIDEAddInOptions in 'SvnIDEAddInOptions.pas',
+  SvnIDEColors in 'SvnIDEColors.pas';
 
 end.
 

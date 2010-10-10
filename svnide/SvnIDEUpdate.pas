@@ -85,7 +85,7 @@ implementation
 
 uses Forms, Controls, Windows, SvnIDEConst, SysUtils, SvnIDEMessageView,
   SvnClientConflict, ActiveX, IStreams, SvnClientUpdate, svnconst,
-  Generics.Defaults, Generics.Collections, SvnUIUtils, SvnIDEUtils;
+  Generics.Defaults, Generics.Collections, SvnUIUtils, SvnIDEUtils, Graphics;
 
 const
   sPMVUpdate = 'Update';
@@ -103,11 +103,12 @@ type
     FSyncPath: string;
     FSyncAction: string;
     FSyncConflicted: Boolean;
+    FSyncTextColor: TColor;
     FUpdateDialog: TUpdateDialog;
     FExceptionMessage: string;
     procedure AbortCallBack;
     procedure CancelCallback(Sender: TObject; var Cancel: Boolean);
-    procedure Add(const Path, Action: string; Conflicted: Boolean);
+    procedure Add(const Path, Action: string; Conflicted: Boolean; TextColor: TColor);
     procedure SyncAdd;
     procedure SyncCompleted;
     function ConflictCallback(Sender: TObject; var ResultFileName: string;
@@ -350,11 +351,12 @@ begin
   Aborted := True;
 end;
 
-procedure TUpdateThread.Add(const Path, Action: string; Conflicted: Boolean);
+procedure TUpdateThread.Add(const Path, Action: string; Conflicted: Boolean; TextColor: TColor);
 begin
   FSyncPath := StringReplace(Path, '/', '\', [rfReplaceAll]);
   FSyncAction := Action;
   FSyncConflicted := Conflicted;
+  FSyncTextColor := TextColor;
   Synchronize(nil, SyncAdd);
 end;
 
@@ -366,10 +368,13 @@ end;
 function TUpdateThread.ConflictCallback(Sender: TObject;
   var ResultFileName: string; var Choice: TSvnWcConflictChoice;
   description: PSvnWcConflictDescription): Boolean;
+var
+  TextColor: TColor;
 begin
   ResultFileName := UTF8ToString(description.path);
   Choice := SvnWcConflictChoosePostpone;
-  Add(ResultFileName, sWcNotifyStateConflicted, True);
+  TextColor := IDEClient.Colors.GetNotifyActionColor(svnWcNotifyUpdateUpdate, svnWcNotifyStateConflicted);
+  Add(ResultFileName, sWcNotifyStateConflicted, True, TextColor);
   Result := False;
 end;
 
@@ -412,7 +417,7 @@ end;
 
 procedure TUpdateThread.SyncAdd;
 begin
-  FUpdateDialog.Add(FSyncPath, FSyncAction, FSyncConflicted);
+  FUpdateDialog.Add(FSyncPath, FSyncAction, FSyncConflicted, FSyncTextColor);
 end;
 
 procedure TUpdateThread.SyncCompleted;
@@ -426,11 +431,22 @@ procedure TUpdateThread.UpdateCallBack(Sender: TObject; const Path,
   MimeType: string; Action: TSvnWcNotifyAction; Kind: TSvnNodeKind;
   ContentState, PropState: TSvnWCNotifyState; Revision: TSvnRevNum;
   var Cancel: Boolean);
+var
+  ActionStr: string;
+  TextColor: TColor;
 begin
-  if Action = svnWcNotifyUpdateCompleted then
-    Add(Format(sUpdateCompletedAtRevision, [Revision]), NotifyActionStr(Action), False)
+  TextColor := IDEClient.Colors.GetNotifyActionColor(Action, ContentState);
+  if ContentState = svnWcNotifyStateConflicted then
+    ActionStr := sWcNotifyStateConflicted
   else
-    Add(Path, NotifyActionStr(Action), False);
+  if ContentState = svnWcNotifyStateMerged then
+    ActionStr := sWcNotifyStateMerged
+  else
+    ActionStr := NotifyActionStr(Action);
+  if Action = svnWcNotifyUpdateCompleted then
+    Add(Format(sUpdateCompletedAtRevision, [Revision]), ActionStr, False, TextColor)
+  else
+    Add(Path, ActionStr, False, TextColor);
 end;
 
 end.

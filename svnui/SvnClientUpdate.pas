@@ -61,6 +61,8 @@ type
     procedure OkClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure HelpClick(Sender: TObject);
+    procedure FilesCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   private
     const
       TextMarginUndefined = -1;
@@ -73,7 +75,7 @@ type
     FResolveCallBack: TResolveCallBack;
     FFileRefreshCallBack: TFileRefreshCallBack;
   public
-    procedure Add(const FileName, Action: string; Conflicted: Boolean);
+    procedure Add(const FileName, Action: string; Conflicted: Boolean; AColor: TColor = clNone);
     procedure Completed;
     property AbortCallBack: TAbortCallBack read FAbortCallBack write FAbortCallBack;
     property ResolveCallBack: TResolveCallBack read FResolveCallBack write FResolveCallBack;
@@ -108,7 +110,7 @@ begin
 end;
 
 procedure TUpdateDialog.Add(const FileName, Action: string;
-  Conflicted: Boolean);
+  Conflicted: Boolean; AColor: TColor = clNone);
 
   //emulation of LVSCW_AUTOSIZE
   procedure UpdateColumnWidth(AColumn: TListColumn; AItem: TListItem);
@@ -147,6 +149,7 @@ begin
   Item := Files.Items.Add;
   Item.Caption := Action;
   Item.SubItems.Add(FileName);
+  Item.Data := Pointer(AColor);
   if Conflicted then
     Item.GroupID := 0
   else
@@ -175,6 +178,17 @@ begin
   finally
     FileList.Free;
   end;
+end;
+
+procedure TUpdateDialog.FilesCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  TextColor: TColor;
+begin
+  DefaultDraw := True;
+  TextColor := TColor(Item.Data);
+  if TextColor <> clNone then
+    Files.Canvas.Font.Color := TextColor;
 end;
 
 procedure TUpdateDialog.FormCreate(Sender: TObject);
@@ -213,6 +227,7 @@ begin
     begin
       Files.Items[Files.ItemIndex].GroupID := 1;
       Files.Items[Files.ItemIndex].Caption := SWcNotifyResolved;
+      Files.Items[Files.ItemIndex].Data := Pointer(clNone);
     end;
 end;
 

@@ -110,6 +110,10 @@
 			</DCCReference>
 			<DCCReference Include="SvnUITypes.pas"/>
 			<DCCReference Include="SvnUIUtils.pas"/>
+			<DCCReference Include="SvnClientOptionsFrame.pas">
+				<Form>SvnOptionsFrame</Form>
+				<DesignClass>TFrame</DesignClass>
+			</DCCReference>
 			<None Include="RAD Studio Version Insight MPL License.txt"/>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>

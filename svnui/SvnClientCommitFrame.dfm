@@ -89,6 +89,7 @@ object SvnCommitFrame: TSvnCommitFrame
       ViewStyle = vsReport
       OnColumnClick = FilesColumnClick
       OnCustomDraw = FilesCustomDraw
+      OnCustomDrawItem = FilesCustomDrawItem
       OnDblClick = FilesDblClick
       OnKeyDown = FilesKeyDown
       OnItemChecked = FilesItemChecked

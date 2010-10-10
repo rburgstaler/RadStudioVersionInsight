@@ -66,6 +66,7 @@ resourcestring
   sFilesUnderDir = 'All files under %s will be committed';
   sWorking = '-Working';
   sRepoBrowser = 'Repository Browser';
+  sVersionControlAddInOptionArea = 'Version Control';
 
 implementation
 

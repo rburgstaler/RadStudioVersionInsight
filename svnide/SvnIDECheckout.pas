@@ -42,7 +42,7 @@ implementation
 
 uses SvnClient, SvnIdeClient, SvnClientCheckout, SvnIDEMessageView, ToolsApi,
   Classes, SvnClientProjectSelect, SysUtils, SvnClientRepoBrowserDialog,
-  SvnClientUpdate, Generics.Collections, SvnIDEConst;
+  SvnClientUpdate, Generics.Collections, SvnIDEConst, Graphics;
 
 type
   TCheckoutThread = class(TThread)
@@ -54,6 +54,7 @@ type
     FRevision: TSvnRevNum;
     FSyncPath: string;
     FSyncAction: string;
+    FSyncTextColor: TColor;
     FUpdateDialog: TUpdateDialog;
     FExceptionMessage: string;
     FProjectNames: TStringList;
@@ -61,7 +62,7 @@ type
     FProjectName: string;
     FAborted: Boolean;
     procedure AbortCallBack;
-    procedure Add(const Path, Action: string);
+    procedure Add(const Path, Action: string; TextColor: TColor);
     procedure SyncAdd;
     procedure SyncCompleted;
     procedure Execute; override;
@@ -130,10 +131,11 @@ begin
   FAborted := True;
 end;
 
-procedure TCheckoutThread.Add(const Path, Action: string);
+procedure TCheckoutThread.Add(const Path, Action: string; TextColor: TColor);
 begin
   FSyncPath := Path;
   FSyncAction := Action;
+  FSyncTextColor := TextColor;
   Synchronize(nil, SyncAdd);
 end;
 
@@ -148,12 +150,14 @@ procedure TCheckoutThread.CheckoutCallBack(Sender: TObject; const Path,
   var Cancel: Boolean);
 var
   FileName: string;
+  TextColor: TColor;
 begin
   FileName := StringReplace(Path, '/', '\', [rfReplaceAll]);
+  TextColor := IDEClient.Colors.GetNotifyActionColor(Action, ContentState);
   if Action = svnWcNotifyUpdateCompleted then
-    Add(Format(sUpdateCompletedAtRevision, [Revision]), NotifyActionStr(Action))
+    Add(Format(sUpdateCompletedAtRevision, [Revision]), NotifyActionStr(Action), TextColor)
   else
-  Add(FileName, NotifyActionStr(Action));
+    Add(FileName, NotifyActionStr(Action), TextColor);
   if (BorlandIDEServices as IOTAServices).IsProject(FileName) then
     FProjectNames.Add(FileName);
   if (BorlandIDEServices as IOTAServices).IsProjectGroup(FileName) then
@@ -237,7 +241,7 @@ end;
 
 procedure TCheckoutThread.SyncAdd;
 begin
-  FUpdateDialog.Add(FSyncPath, FSyncAction, False);
+  FUpdateDialog.Add(FSyncPath, FSyncAction, False, FSyncTextColor);
 end;
 
 procedure TCheckoutThread.SyncCompleted;

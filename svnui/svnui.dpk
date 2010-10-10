@@ -51,7 +51,8 @@ contains
   SvnClientRepoBrowserFrame in 'SvnClientRepoBrowserFrame.pas' {FrmRepoBrowser: TFrame},
   SvnClientRepoBrowserDialog in 'SvnClientRepoBrowserDialog.pas' {dlgRepoBrowser},
   SvnUITypes in 'SvnUITypes.pas',
-  SvnUIUtils in 'SvnUIUtils.pas';
+  SvnUIUtils in 'SvnUIUtils.pas',
+  SvnClientOptionsFrame in 'SvnClientOptionsFrame.pas' {SvnOptionsFrame: TFrame};
 
 end.
 

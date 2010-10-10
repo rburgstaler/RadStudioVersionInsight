@@ -157,6 +157,7 @@ object SvnLogFrame: TSvnLogFrame
       RowSelect = True
       TabOrder = 0
       ViewStyle = vsReport
+      OnCustomDrawItem = FilesCustomDrawItem
       OnData = FilesData
     end
   end
