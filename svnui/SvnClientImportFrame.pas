@@ -180,11 +180,14 @@ procedure TSvnImportFrame.ImportClick(Sender: TObject);
 var
   Idx: Integer;
 begin
-  Idx := FRecentComments.IndexOf(Comment.Text);
-  if Idx <> -1 then
-    FRecentComments.Move(Idx, 0)
-  else
-    FRecentComments.Insert(0, Comment.Text);
+  if Comment.Text <> '' then
+  begin
+    Idx := FRecentComments.IndexOf(Comment.Text);
+    if Idx <> -1 then
+      FRecentComments.Move(Idx, 0)
+    else
+      FRecentComments.Insert(0, Comment.Text);
+  end;
   Idx := FURLHistory.IndexOf(URL.Text);
   if Idx <> -1 then
     FURLHistory.Move(Idx, 0)

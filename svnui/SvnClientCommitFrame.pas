@@ -352,11 +352,14 @@ var
   I, Idx: Integer;
   SortedIndexList: TList<Integer>;
 begin
-  Idx := FRecentComments.IndexOf(Comment.Text);
-  if Idx <> -1 then
-    FRecentComments.Move(Idx, 0)
-  else
-    FRecentComments.Insert(0, Comment.Text);
+  if Comment.Text <> '' then
+  begin
+    Idx := FRecentComments.IndexOf(Comment.Text);
+    if Idx <> -1 then
+      FRecentComments.Move(Idx, 0)
+    else
+      FRecentComments.Insert(0, Comment.Text);
+  end;
   CommitList := TStringList.Create;
   AddList := TStringList.Create;
   SortedIndexList := TList<Integer>.Create;
