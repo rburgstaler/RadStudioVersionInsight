@@ -580,6 +580,10 @@ type
       Callback: TSvnListCallback = nil; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
     procedure List(const PathName: string; Depth: TSvnDepth; FetchLocks: Boolean; ListStrings: TStrings;
       DirEntryFields: DWORD = SVN_DIRENT_ALL; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
+    procedure Merge(const Source1: string; Revision1: TSvnRevNum; const Source2: string; Revision2: TSvnRevNum;
+      const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; Depth: TSvnDepth = svnDepthInfinity;
+      IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False; RecordOnly: TSvnBoolean = False;
+      DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
     function MkDir(const Paths: TStringList; const Comment: string; MakeParents: Boolean = False; SubPool: PAprPool = nil): Boolean;
     function MatchGlobalIgnores(const PathName: string; SubPool: PAprPool = nil): Boolean;
     procedure Move(SrcPathNames: TStrings; const DstPath: string; Force: Boolean = True; MoveAsChild: Boolean = False;
@@ -892,7 +896,9 @@ const
     SWcNotifyCommitDeleted, SWcNotifyCommitReplaced, SWcNotifyCommitPostfixTxdelta, SWcNotifyBlameRevision,
     SWcNotifyLocked, SWcNotifyUnlocked, SWcNotifyFailedLock, SWcNotifyFailedUnlock, SWcNotifyExists,
     SWcNotifyChangelistSet, SWcNotifyChangelistClear, SWcNotifyChangelistMoved, SWcNotifyMergeBegin,
-    SWcNotifyForeignMergeBegin, SWcNotifyUpdateReplace);
+    SWcNotifyForeignMergeBegin, SWcNotifyUpdateReplace, SWcNotifyPropertyAdded, SWcNotifyPropertyModified,
+    SWcNotifyPropertyDeleted, SWcNotifyPropertyDeletedNonexistent, SWcNotifyRevpropSet, SWcNotifyRevpropDeleted,
+    SWcNotifyMergeCompleted, SWcNotifyTreeConflict, SWcNotifyFailedExternal);
 begin
   Result := NotifyActionStrings[Action];
 end;
@@ -3744,6 +3750,41 @@ begin
     SvnCheck(svn_wc_get_default_ignores(GlobalIgnores, FCtx^.config, SubPool));
     Result := svn_cstring_match_glob_list(PAnsiChar(UTF8Encode(PathName)), GlobalIgnores);
   finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+procedure TSvnClient.Merge(const Source1: string; Revision1: TSvnRevNum; const Source2: string; Revision2: TSvnRevNum;
+  const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; Depth: TSvnDepth = svnDepthInfinity;
+  IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False; RecordOnly: TSvnBoolean = False;
+  DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  Rev1, Rev2: TSvnOptRevision;
+  EncodedSource1, EncodedSource2: PAnsiChar;
+begin
+  if not Initialized then
+    Initialize;
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    FillChar(Rev1, SizeOf(TSvnOptRevision), 0);
+    Rev1.Kind := svnOptRevisionNumber;
+    Rev1.Value.number := Revision1;
+    FillChar(Rev2, SizeOf(TSvnOptRevision), 0);
+    Rev2.Kind := svnOptRevisionNumber;
+    Rev2.Value.number := Revision2;
+    FCancelled := False;
+    FNotifyCallback := Callback;
+    EncodedSource1 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source1)), SubPool);
+    EncodedSource2 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source2)), SubPool);
+    SvnCheck(svn_client_merge3(EncodedSource1, @Rev1, EncodedSource2, @Rev2,
+      PAnsiChar(UTF8Encode(TargetWcpath)), Depth, IgnoreAncestry, Force, RecordOnly, DryRun,
+      nil, FCtx, SubPool));
+  finally
+    FNotifyCallback := nil;
     if NewPool then
       apr_pool_destroy(SubPool);
   end;

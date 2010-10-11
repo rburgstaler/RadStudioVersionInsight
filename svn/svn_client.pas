@@ -2755,7 +2755,17 @@ type
     svnWcNotifyChangelistMoved,
     svnWcNotifyMergeBegin,
     svnWcNotifyForeignMergeBegin,
-    svnWcNotifyUpdateReplace
+    svnWcNotifyUpdateReplace,
+    //Subversion 1.6 and higher
+    svnWcNotifyPropertyAdded,
+    svnWcNotifyPropertyModified,
+    svnWcNotifyPropertyDeleted,
+    svnWcNotifyPropertyDeletedNonexistent,
+    svnWcNotifyRevpropSet,
+    svnWcNotifyRevpropDeleted,
+    svnWcNotifyMergeCompleted,
+    svnWcNotifyTreeConflict,
+    svnWcNotifyFailedExternal
   );
   PSvnWcNotifyState = ^TSvnWcNotifyState;
   TSvnWcNotifyState = (
