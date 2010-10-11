@@ -95,6 +95,15 @@ resourcestring
   SWcNotifyMergeBegin = 'Merge Begin';
   SWcNotifyForeignMergeBegin = 'Foreign Merge Begin';
   SWcNotifyUpdateReplace = 'Update Replace';
+  SWcNotifyPropertyAdded = 'Property Added';
+  SWcNotifyPropertyModified = 'Property Modified';
+  SWcNotifyPropertyDeleted = 'Property Deleted';
+  SWcNotifyPropertyDeletedNonexistent = 'Nonexistent Property Deleted';
+  SWcNotifyRevpropSet = 'Revprop Set';
+  SWcNotifyRevpropDeleted = 'Revprop Deleted';
+  SWcNotifyMergeCompleted = 'Merge Completed';
+  SWcNotifyTreeConflict = 'Tree Conflict';
+  SWcNotifyFailedExternal = 'Failed External';
   sWcNotifyStateInapplicable = 'Inapplicable';
   sWcNotifyStateUnknown = 'Unknown';
   sWcNotifyStateUnchanged = 'Unchanged';
