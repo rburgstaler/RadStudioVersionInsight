@@ -105,12 +105,15 @@ var
 type
   TCommit = class(TInterfacedObject, INTACustomEditorView, INTACustomEditorView150)
   protected
-    FDirectoryList: TStringList;
-    FSvnClient: TSvnClient;
-    FSvnCommitFrame: TSvnCommitFrame;
-    FRootType: TRootType;
-    FFoundMissing: Boolean;
-    FStatusItem: PSvnListViewItem;
+    type
+      TRefreshProc = procedure(const SvnListItem: TSvnListViewItem) of object;
+    var
+      FDirectoryList: TStringList;
+      FSvnClient: TSvnClient;
+      FSvnCommitFrame: TSvnCommitFrame;
+      FRootType: TRootType;
+      FFoundMissing: Boolean;
+      FStatusItem: PSvnListViewItem;
     { INTACustomEditorView }
     function GetCanCloneView: Boolean;
     function CloneEditorView: INTACustomEditorView;
@@ -142,7 +145,11 @@ type
     procedure ResolveCallBack(const FileName: string);
     procedure GetFileStatusCallBack(const FileName: string; var SvnListViewItem: TSvnListViewItem);
     procedure StatusCallBack(Sender: TObject; Item: TSvnItem; var Cancel: Boolean);
+    procedure RefreshCallBack;
+    procedure ModificationRefreshCallBack(Sender: TObject; Item: TSvnItem;
+      var Cancel: Boolean);
     { Misc }
+    procedure PrepareFileList(FrameAdd: TRefreshProc; AModificationCallBack: TSvnStatusCallback; var AURL: string);
   public
     constructor Create(SvnClient: TSvnClient; const DirectoryList: TStringList;
       RootType: TRootType);
@@ -366,7 +373,7 @@ begin
   Result := IDEClient.Colors.GetStatusColor(AItem.TextStatus);
 end;
 
-procedure TCommit.FrameCreated(AFrame: TCustomFrame);
+procedure TCommit.PrepareFileList(FrameAdd: TRefreshProc; AModificationCallBack: TSvnStatusCallback; var AURL: string);
 
   // make sure that all files/paths are versioned
   procedure CheckVersionProjectFiles(AFilesAndDirectoriesInRepo,
@@ -442,42 +449,56 @@ procedure TCommit.FrameCreated(AFrame: TCustomFrame);
 
 var
   I: Integer;
-  Cursor: TCursor;
-  RecentComments: TStringList;
   TempBasePath: string;
   FilesAndDirectoriesInRepo, AddedDirectories, UnversionedFilesAndDirectories: TStringList;
+begin
+  FilesAndDirectoriesInRepo := TStringList.Create;
+  AddedDirectories := TStringList.Create;
+  UnversionedFilesAndDirectories := TStringList.Create;
+  try
+    UnversionedFilesAndDirectories.Sorted := True;
+    FilesAndDirectoriesInRepo.Assign(FDirectoryList);
+    if FRootType = rtExpicitFiles then
+    begin
+      CheckVersionProjectFiles(FilesAndDirectoriesInRepo, AddedDirectories,
+        UnversionedFilesAndDirectories);
+      for I := 0 to UnversionedFilesAndDirectories.Count - 1 do
+        FrameAdd(TSvnListViewItem.Create(UnversionedFilesAndDirectories[I],
+          svnWcStatusUnversioned, UnversionedFilesAndDirectories.Objects[I] <> nil));
+    end;
+    for I := 0 to FilesAndDirectoriesInRepo.Count - 1 do
+      FSvnClient.GetModifications(FilesAndDirectoriesInRepo[I], AModificationCallBack, True,
+        False, False, True);
+    if (FRootType = rtExpicitFiles) and (AddedDirectories.Count > 0) then
+    begin
+      for I := 0 to AddedDirectories.Count - 1 do
+        FrameAdd(TSvnListViewItem.Create(AddedDirectories[I], svnWcStatusAdded, True));
+      FilesAndDirectoriesInRepo.AddStrings(AddedDirectories);
+    end;
+    AURL := FSvnClient.GetBaseURL(FilesAndDirectoriesInRepo, TempBasePath);
+  finally
+    FilesAndDirectoriesInRepo.Free;
+    AddedDirectories.Free;
+    UnversionedFilesAndDirectories.Free;
+  end;
+end;
+
+procedure TCommit.FrameCreated(AFrame: TCustomFrame);
+var
+  Cursor: TCursor;
+  RecentComments: TStringList;
+  URL: string;
 begin
   FSvnCommitFrame := TSvnCommitFrame(AFrame);
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   Application.ProcessMessages;
   try
-    FilesAndDirectoriesInRepo := TStringList.Create;
-    AddedDirectories := TStringList.Create;
-    UnversionedFilesAndDirectories := TStringList.Create;
     FSvnCommitFrame.BeginUpdate;
     try
-      UnversionedFilesAndDirectories.Sorted := True;
-      FilesAndDirectoriesInRepo.Assign(FDirectoryList);
-      if FRootType = rtExpicitFiles then
-      begin
-        CheckVersionProjectFiles(FilesAndDirectoriesInRepo, AddedDirectories,
-          UnversionedFilesAndDirectories);
-        for I := 0 to UnversionedFilesAndDirectories.Count - 1 do
-          FSvnCommitFrame.Add(TSvnListViewItem.Create(UnversionedFilesAndDirectories[I],
-            svnWcStatusUnversioned, UnversionedFilesAndDirectories.Objects[I] <> nil));
-      end;
-      for I := 0 to FilesAndDirectoriesInRepo.Count - 1 do
-        FSvnClient.GetModifications(FilesAndDirectoriesInRepo[I], ModificationCallBack, True,
-          False, False, True);
-      if (FRootType = rtExpicitFiles) and (AddedDirectories.Count > 0) then
-      begin
-        for I := 0 to AddedDirectories.Count - 1 do
-          FSvnCommitFrame.Add(TSvnListViewItem.Create(AddedDirectories[I], svnWcStatusAdded, True));
-        FilesAndDirectoriesInRepo.AddStrings(AddedDirectories);
-      end;
+      PrepareFileList(FSvnCommitFrame.Add, ModificationCallBack, URL);
       FSvnCommitFrame.CheckForNoFilesVisible;
-      FSvnCommitFrame.URL := FSvnClient.GetBaseURL(FilesAndDirectoriesInRepo, TempBasePath);
+      FSvnCommitFrame.URL := URL;
       FSvnCommitFrame.CommitCallBack := CommitCallBack;
       FSvnCommitFrame.CloseCallBack := CloseCallBack;
       FSvnCommitFrame.DiffCallBack := DiffCallBack;
@@ -486,6 +507,7 @@ begin
       FSvnCommitFrame.ResolveCallBack := ResolveCallBack;
       FSvnCommitFrame.GetFileStatusCallBack := GetFileStatusCallBack;
       FSvnCommitFrame.FileColorCallBack := FileColorCallBack;
+      FSvnCommitFrame.RefreshCallBack := RefreshCallBack;
       if FFoundMissing then
         FSvnCommitFrame.HandleMissingFiles;
       RecentComments := TStringList.Create;
@@ -497,9 +519,6 @@ begin
       end;
     finally
       FSvnCommitFrame.EndUpdate;
-      FilesAndDirectoriesInRepo.Free;
-      AddedDirectories.Free;
-      UnversionedFilesAndDirectories.Free;
     end;
   finally
     Screen.Cursor := Cursor;
@@ -565,6 +584,26 @@ begin
       FFoundMissing := True;
     FSvnCommitFrame.Add(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory));
   end;
+end;
+
+procedure TCommit.ModificationRefreshCallBack(Sender: TObject; Item: TSvnItem;
+  var Cancel: Boolean);
+begin
+  if (FRootType <> rtExpicitFiles) or (not FSvnCommitFrame.Found(Item.PathName)) then
+  begin
+    if Item.TextStatus = svnWcStatusMissing then
+      FFoundMissing := True;
+    FSvnCommitFrame.RefreshAdd(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory));
+  end;
+end;
+
+procedure TCommit.RefreshCallBack;
+var
+  Dummy: string;
+begin
+  PrepareFileList(FSvnCommitFrame.RefreshAdd, ModificationRefreshCallBack, Dummy);
+  if FFoundMissing then
+    FSvnCommitFrame.HandleMissingFiles(True);
 end;
 
 procedure TCommit.ResolveCallBack(const FileName: string);

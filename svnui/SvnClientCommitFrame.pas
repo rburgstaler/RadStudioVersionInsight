@@ -70,6 +70,7 @@ type
   TResolveCallBack = procedure(const FileName: string) of object;
   TGetFileStatusCallBack = procedure(const FileName: string; var SvnListViewItem: TSvnListViewItem) of object;
   TFileColorCallBack = function(AItem: TSvnListViewItem): TColor of object;
+  TRefreshCallBack = procedure of object;
 
   TSvnCommitFrame = class(TFrame)
     Label1: TLabel;
@@ -127,16 +128,20 @@ type
     FAddCallBack: TAddCallBack;
     FResolveCallBack: TResolveCallBack;
     FGetFileStatusCallBack: TGetFileStatusCallBack;
+    FRefreshCallBack: TRefreshCallBack;
     FExecutingCheckAllClick: Boolean;
+    FExecutingRefresh: Boolean;
     FExecutingUnversionedParentCheck: Boolean;
     FItemList: TList<TSvnListViewItem>;
     FIndexList: TList<Integer>;
+    FRefreshItemList: TObjectList<TSvnListViewItem>;
     FSortColumn: Integer;
     FSortOrder: Boolean;
     FRecentComments: TStringList;
     FURL: string;
     FNoFiles: Boolean;
     procedure CMRelease(var Message: TMessage); message CM_RELEASE;
+    procedure DoRefresh;
     function GetSvnEditState: TSvnEditState;
     procedure SetRecentComments(Value: TStringList);
     procedure Notify(Sender: TObject; const Item: TSvnListViewItem;
@@ -147,6 +152,7 @@ type
     procedure UpdateCommitButton;
     procedure UpdateListView(const SvnListItem: TSvnListViewItem; ItemIndex: Integer);
     procedure ResizeStuff;
+    procedure WndProc(var Message: TMessage); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -154,9 +160,10 @@ type
     procedure BeginUpdate;
     procedure EndUpdate;
     procedure CheckForNoFilesVisible;
+    procedure RefreshAdd(const SvnListItem: TSvnListViewItem);
     function Found(const FileName: string): Boolean;
     function PerformEditAction(AEditAction: TSvnEditAction): Boolean;
-    procedure HandleMissingFiles;
+    procedure HandleMissingFiles(ARefresh: Boolean = False);
     property AddCallBack: TAddCallBack read FAddCallBack write FAddCallBack;
     property CloseCallBack: TCloseCallBack read FCloseCallBack write FCloseCallBack;
     property CommitCallBack: TCommitCallBack read FCommitCallBack write FCommitCallBack;
@@ -165,6 +172,7 @@ type
     property RevertCallBack: TRevertCallBack read FRevertCallBack write FRevertCallBack;
     property ResolveCallBack: TResolveCallBack read FResolveCallBack write FResolveCallBack;
     property GetFileStatusCallBack: TGetFileStatusCallBack read FGetFileStatusCallBack write FGetFileStatusCallBack;
+    property RefreshCallBack: TRefreshCallBack read FRefreshCallBack write FRefreshCallBack;
     property RecentComments: TStringList read FRecentComments write SetRecentComments;
     property SvnEditState: TSvnEditState read GetSvnEditState;
     property URL: string read FURL write SetURL;
@@ -395,16 +403,19 @@ begin
   FItemList := TList<TSvnListViewItem>.Create;
   FItemList.OnNotify := Notify;
   FIndexList := TList<Integer>.Create;
+  FRefreshItemList := TObjectList<TSvnListViewItem>.Create;
   FSortColumn := 0;
   FSortOrder := True;
   FRecentComments := TStringList.Create;
   FExecutingCheckAllClick := False;
+  FExecutingRefresh := False;
   FExecutingUnversionedParentCheck := False;
   FNoFiles := False;
 end;
 
 destructor TSvnCommitFrame.Destroy;
 begin
+  FRefreshItemList.Free;
   FIndexList.Free;
   FItemList.Free;
   FRecentComments.Free;
@@ -454,6 +465,57 @@ begin
           and not SvnListViewItem.Directory then
           DiffCallBack(SvnListViewItem.FPathName);
       end;
+  end;
+end;
+
+procedure TSvnCommitFrame.DoRefresh;
+var
+  I: Integer;
+  SvnListViewItem: TSvnListViewItem;
+  UncheckedItems: TStringList;
+begin
+  if not FExecutingRefresh then
+  begin
+    FExecutingRefresh := True;
+    try
+      Cursor := Screen.Cursor;
+      Screen.Cursor := crHourGlass;
+      Application.ProcessMessages;
+      try
+        FRefreshItemList.Clear;
+        FRefreshCallBack;
+        UncheckedItems := TStringList.Create;
+        BeginUpdate;
+        try
+          UncheckedItems.Sorted := True;
+          for I := 0 to FItemList.Count - 1 do
+            if not FItemList[I].Checked then
+              UncheckedItems.Add(FItemList[I].PathName);
+          FIndexList.Clear;
+          FItemList.Clear;
+          Files.Items.Clear;
+          for I := 0 to FRefreshItemList.Count - 1 do
+          begin
+            SvnListViewItem := FRefreshItemList[I];
+            Add(TSvnListViewItem.Create(SvnListViewItem.PathName, SvnListViewItem.TextStatus, SvnListViewItem.Directory));
+          end;
+          for I := 0 to Files.Items.Count - 1 do
+          begin
+            SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+            if UncheckedItems.IndexOf(SvnListViewItem.PathName) <> -1 then
+              Files.Items[I].Checked := False;
+          end;
+          CheckForNoFilesVisible;
+        finally
+          EndUpdate;
+          UncheckedItems.Free;
+        end;
+      finally
+        Screen.Cursor := Cursor;
+      end;
+    finally
+      FExecutingRefresh := False;
+    end;
   end;
 end;
 
@@ -641,23 +703,28 @@ begin
     Result := [];
 end;
 
-procedure TSvnCommitFrame.HandleMissingFiles;
+procedure TSvnCommitFrame.HandleMissingFiles(ARefresh: Boolean = False);
 var
   UnversionedFiles: TDictionary<string, string>;
   MissingList: TStringList;
   I, J: Integer;
   SvnListViewItem: TSvnListViewItem;
   FileName: string;
+  ItemList: TList<TSvnListViewItem>;
 begin
   UnversionedFiles := TDictionary<string, string>.Create(0, TOrdinalStringComparer.Create);
   try
     MissingList := TStringList.Create;
     try
-      for I := 0 to FItemList.Count - 1 do
-        if FItemList[I].TextStatus = svnWcStatusUnversioned then
-          UnversionedFiles.Add(FItemList[I].PathName, FItemList[I].PathName)
-        else if FItemList[I].TextStatus = svnWcStatusMissing then
-          MissingList.Add(FItemList[I].PathName);
+      if ARefresh then
+        ItemList := FRefreshItemList
+      else
+        ItemList := FItemList;
+      for I := 0 to ItemList.Count - 1 do
+        if ItemList[I].TextStatus = svnWcStatusUnversioned then
+          UnversionedFiles.Add(ItemList[I].PathName, ItemList[I].PathName)
+        else if ItemList[I].TextStatus = svnWcStatusMissing then
+          MissingList.Add(ItemList[I].PathName);
       for I := 0 to MissingList.Count - 1 do
         if UnversionedFiles.TryGetValue(MissingList[I], FileName) then
         begin
@@ -671,21 +738,21 @@ begin
             GetFileStatusCallBack(MissingList[I], SvnListViewItem);
             if SvnListViewItem.FTextStatus <> svnWcStatusMissing then
             begin
-              for J := 0 to FItemList.Count - 1 do
-                if (FItemList[J].FTextStatus = svnWcStatusMissing)
-                  and SameText(FItemList[J].PathName, MissingList[I]) then
+              for J := 0 to ItemList.Count - 1 do
+                if (ItemList[J].FTextStatus = svnWcStatusMissing)
+                  and SameText(ItemList[J].PathName, MissingList[I]) then
                 begin
                   if SvnListViewItem.TextStatus = svnWcStatusNormal then
-                    FItemList.Delete(J)
+                    ItemList.Delete(J)
                   else
-                    FItemList[J].TextStatus := SvnListViewItem.FTextStatus;
+                    ItemList[J].TextStatus := SvnListViewItem.FTextStatus;
                   Break;
                 end;
-              for J := 0 to FItemList.Count - 1 do
-                if (FItemList[J].TextStatus = svnWcStatusUnversioned)
-                  and SameText(FItemList[J].PathName, MissingList[I]) then
+              for J := 0 to ItemList.Count - 1 do
+                if (ItemList[J].TextStatus = svnWcStatusUnversioned)
+                  and SameText(ItemList[J].PathName, MissingList[I]) then
                 begin
-                  FItemList.Delete(J);
+                  ItemList.Delete(J);
                   Break;
                 end;
             end;
@@ -863,6 +930,11 @@ begin
     Comment.Text := S
   else
     Comment.Text := Comment.Text + ' ' + S;
+end;
+
+procedure TSvnCommitFrame.RefreshAdd(const SvnListItem: TSvnListViewItem);
+begin
+  FRefreshItemList.Add(SvnListItem);
 end;
 
 procedure TSvnCommitFrame.ResolveActionExecute(Sender: TObject);
@@ -1171,6 +1243,14 @@ begin
       FNoFiles := False;
     end;
   end;
+end;
+
+procedure TSvnCommitFrame.WndProc(var Message: TMessage);
+begin
+  if (Message.Msg = CM_CHILDKEY) and(TCMChildKey(Message).CharCode = VK_F5) then
+    DoRefresh
+  else
+    inherited WndProc(Message);
 end;
 
 { TSvnListViewItem }
