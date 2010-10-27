@@ -3771,11 +3771,21 @@ begin
     AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
   try
     FillChar(Rev1, SizeOf(TSvnOptRevision), 0);
-    Rev1.Kind := svnOptRevisionNumber;
-    Rev1.Value.number := Revision1;
+    if Revision1 <= 0 then
+      Rev1.Kind := svnOptRevisionHead
+    else
+    begin
+      Rev1.Kind := svnOptRevisionNumber;
+      Rev1.Value.number := Revision1;
+    end;
     FillChar(Rev2, SizeOf(TSvnOptRevision), 0);
-    Rev2.Kind := svnOptRevisionNumber;
-    Rev2.Value.number := Revision2;
+    if Revision2 <= 0 then
+      Rev2.Kind := svnOptRevisionHead
+    else
+    begin
+      Rev2.Kind := svnOptRevisionNumber;
+      Rev2.Value.number := Revision2;
+    end;
     FCancelled := False;
     FNotifyCallback := Callback;
     EncodedSource1 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source1)), SubPool);
