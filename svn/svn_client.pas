@@ -6226,17 +6226,17 @@ begin
     else
       S := GetSvnErrorMessage(E^.apr_err);
 
+    if Message <> '' then
+    begin
+      Message := Message + #13#10;
+      Inc(CurPos, 2);
+    end;
+
     with FErrors[High(FErrors)] do
     begin
       Code := E^.apr_err;
       SPos := CurPos;
       SLen := Length(S);
-    end;
-
-    if Message <> '' then
-    begin
-      Message := Message + #13#10;
-      Inc(CurPos, 2);
     end;
 
     Message := Message + S;
