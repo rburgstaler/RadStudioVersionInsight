@@ -58,6 +58,9 @@ resourcestring
   sRevertDirAddCheck = 'Are you sure you would like to revert? These items will no longer be added to the repository.';
   sRevertDirMoreDirectories = 'and %d additional directories';
   sRevertDirMoreFiles = 'and %d additional files';
+  sRunReverseMergeRevision = 'Do you really want to revert the changes of revision %s in %s?';
+  sRunReverseMergeToRevision = 'Do you really want to revert all changes in %s and go back to revision %s?';
+  sRunFileReverseMergeRevision = 'Do you really want to revert the changes of revision %s in %s?';
   sDestination = 'Destination for checked out files.';
   sConflictsRemaining = 'There are unresolved conflicts remaining.  Do you still wish to close?';
   sLoadRepoContentError = 'Cannot load repository content. Please check the entered URL.';

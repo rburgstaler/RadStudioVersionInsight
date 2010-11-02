@@ -50,7 +50,8 @@ contains
   SvnIDEUtils in 'SvnIDEUtils.pas',
   SvnIDERepoBrowser in 'SvnIDERepoBrowser.pas',
   SvnIDEAddInOptions in 'SvnIDEAddInOptions.pas',
-  SvnIDEColors in 'SvnIDEColors.pas';
+  SvnIDEColors in 'SvnIDEColors.pas',
+  SvnIDETypes in 'SvnIDETypes.pas';
 
 end.
 

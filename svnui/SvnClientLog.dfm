@@ -71,6 +71,7 @@ object SvnLogFrame: TSvnLogFrame
       OwnerData = True
       ReadOnly = True
       RowSelect = True
+      PopupMenu = RevisionPopupMenu
       TabOrder = 0
       ViewStyle = vsReport
       OnData = RevisionsData
@@ -155,6 +156,7 @@ object SvnLogFrame: TSvnLogFrame
       OwnerData = True
       ReadOnly = True
       RowSelect = True
+      PopupMenu = FilesPopupMenu
       TabOrder = 0
       ViewStyle = vsReport
       OnCustomDrawItem = FilesCustomDrawItem
@@ -323,5 +325,41 @@ object SvnLogFrame: TSvnLogFrame
       DFDF018080030000CF9F018080030000E73F018080030000F07F018080030000
       FFFF018080070000FFFF0381800F000000000000000000000000000000000000
       000000000000}
+  end
+  object ActionList1: TActionList
+    Left = 312
+    Top = 248
+    object ReverseMergeRevisionAction: TAction
+      Caption = 'Revert changes from this revision'
+      OnExecute = ReverseMergeRevisionActionExecute
+      OnUpdate = ReverseMergeRevisionActionUpdate
+    end
+    object ReverseMergeToRevisionAction: TAction
+      Caption = 'Revert to this revision'
+      OnExecute = ReverseMergeToRevisionActionExecute
+      OnUpdate = ReverseMergeToRevisionActionUpdate
+    end
+    object FileReverseMergeRevisionAction: TAction
+      Caption = 'Revert changes from this revision'
+      OnExecute = FileReverseMergeRevisionActionExecute
+      OnUpdate = FileReverseMergeRevisionActionUpdate
+    end
+  end
+  object RevisionPopupMenu: TPopupMenu
+    Left = 464
+    Top = 296
+    object RevertChangesFromThisRevision1: TMenuItem
+      Action = ReverseMergeRevisionAction
+    end
+    object RevertToThisRevision1: TMenuItem
+      Action = ReverseMergeToRevisionAction
+    end
+  end
+  object FilesPopupMenu: TPopupMenu
+    Left = 488
+    Top = 480
+    object RevertChangesFromThisRevision2: TMenuItem
+      Action = FileReverseMergeRevisionAction
+    end
   end
 end

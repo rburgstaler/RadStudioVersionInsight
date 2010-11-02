@@ -103,6 +103,7 @@ begin
         case Action of
           svnWcNotifyUpdateAdd: Result := FColors[ssckAdded];
           svnWcNotifyUpdateDelete: Result := FColors[ssckDeleted];
+          svnWcNotifyTreeConflict: Result := FColors[ssckConflicted];
           else
             Result := clNone;
         end;

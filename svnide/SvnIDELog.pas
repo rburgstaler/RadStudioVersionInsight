@@ -66,7 +66,7 @@ type
 implementation
 
 uses SysUtils, SvnIDEConst, ToolsApi, SvnClientLog, SvnClient, DesignIntf, Forms,
-  SvnUITypes, SvnIDEUtils, ExtCtrls, Graphics;
+  SvnUITypes, SvnIDEUtils, ExtCtrls, Graphics, SvnIDETypes;
 
 const
   sPMVLogParent = 'SvnLogParent';
@@ -111,6 +111,7 @@ type
     { CallBacks }
     procedure LoadRevisionsCallBack(FirstRevision: Integer; Count: Integer);
     function FileColorCallBack(Action: Char): TColor;
+    procedure ReverseMergeCallBack(const APathName: string; ARevision1, ARevision2: Integer);
   public
     constructor Create(SvnClient: TSvnClient; const ARootPath: string);
     destructor Destroy; override;
@@ -244,10 +245,21 @@ begin
 end;
 
 procedure TLogView.FrameCreated(AFrame: TCustomFrame);
+var
+  URL, RootURL, RootRelativePath: string;
 begin
   FSvnLogFrame := TSvnLogFrame(AFrame);
   FSvnLogFrame.FileColorCallBack := FileColorCallBack;
   FSvnLogFrame.LoadRevisionsCallBack := LoadRevisionsCallBack;
+  FSvnLogFrame.ReverseMergeCallBack := ReverseMergeCallBack;
+  FSvnLogFrame.RootPath := ExcludeTrailingPathDelimiter(FRootPath);
+  URL := IDEClient.SvnClient.FindRepository(FRootPath);
+  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
+  if URL <> RootURL then
+    RootRelativePath := Copy(URL, Length(RootURL) + 1, MaxInt)
+  else
+    RootRelativePath := '';
+  FSvnLogFrame.RootRelativePath := RootRelativePath;
   FSvnItem := TSvnItem.Create(FSvnClient, nil, FRootPath, True);
   FSvnItem.AsyncUpdate := Self;
   FSvnItem.IncludeChangeFiles := True;
@@ -309,6 +321,30 @@ begin
   FSvnItem.AsyncUpdate := Self;
   FSvnLogFrame.StartAsync;
   FSvnItem.AsyncReloadHistory;
+end;
+
+procedure TLogView.ReverseMergeCallBack(const APathName: string; ARevision1,
+  ARevision2: Integer);
+var
+  URL, RootURL, Path, PathName: string;
+begin
+  if APathName = '' then
+  begin
+    URL := IDEClient.SvnClient.FindRepository(FRootPath);
+    Path := SvnExcludeTrailingPathDelimiter(IDEClient.SvnClient.NativePathToSvnPath(FRootPath));
+  end
+  else
+  begin
+    URL := IDEClient.SvnClient.FindRepository(FRootPath);
+    RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
+    PathName := APathName;
+    if URL <> RootURL then
+      Delete(PathName, 1, Length(URL) - Length(RootURL));
+    Path := SvnExcludeTrailingPathDelimiter(IDEClient.SvnClient.NativePathToSvnPath(FRootPath));
+    URL := URL + PathName;
+    Path := Path + PathName;
+  end;
+  TMergeThread.Create(IDEClient, URL, Path, ARevision1, ARevision2);
 end;
 
 procedure TLogView.SelectView;

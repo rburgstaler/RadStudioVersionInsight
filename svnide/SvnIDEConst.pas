@@ -67,6 +67,8 @@ resourcestring
   sWorking = '-Working';
   sRepoBrowser = 'Repository Browser';
   sVersionControlAddInOptionArea = 'Version Control';
+  sMergeDialogCaption = 'Merge revisions %s - %s of %s into %s';
+  sHead = 'HEAD';
 
 implementation
 
