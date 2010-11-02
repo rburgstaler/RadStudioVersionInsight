@@ -581,9 +581,9 @@ type
     procedure List(const PathName: string; Depth: TSvnDepth; FetchLocks: Boolean; ListStrings: TStrings;
       DirEntryFields: DWORD = SVN_DIRENT_ALL; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
     procedure Merge(const Source1: string; Revision1: TSvnRevNum; const Source2: string; Revision2: TSvnRevNum;
-      const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; Depth: TSvnDepth = svnDepthInfinity;
-      IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False; RecordOnly: TSvnBoolean = False;
-      DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
+      const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
+      Depth: TSvnDepth = svnDepthInfinity; IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False;
+      RecordOnly: TSvnBoolean = False; DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
     function MkDir(const Paths: TStringList; const Comment: string; MakeParents: Boolean = False; SubPool: PAprPool = nil): Boolean;
     function MatchGlobalIgnores(const PathName: string; SubPool: PAprPool = nil): Boolean;
     procedure Move(SrcPathNames: TStrings; const DstPath: string; Force: Boolean = True; MoveAsChild: Boolean = False;
@@ -3756,13 +3756,14 @@ begin
 end;
 
 procedure TSvnClient.Merge(const Source1: string; Revision1: TSvnRevNum; const Source2: string; Revision2: TSvnRevNum;
-  const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; Depth: TSvnDepth = svnDepthInfinity;
-  IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False; RecordOnly: TSvnBoolean = False;
-  DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
+  const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
+  Depth: TSvnDepth = svnDepthInfinity; IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False;
+  RecordOnly: TSvnBoolean = False; DryRun: TSvnBoolean = False; SubPool: PAprPool = nil);
 var
   NewPool: Boolean;
   Rev1, Rev2: TSvnOptRevision;
   EncodedSource1, EncodedSource2: PAnsiChar;
+  SaveCancel: TSvnCancelCallback;
 begin
   if not Initialized then
     Initialize;
@@ -3788,11 +3789,18 @@ begin
     end;
     FCancelled := False;
     FNotifyCallback := Callback;
-    EncodedSource1 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source1)), SubPool);
-    EncodedSource2 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source2)), SubPool);
-    SvnCheck(svn_client_merge3(EncodedSource1, @Rev1, EncodedSource2, @Rev2,
-      PAnsiChar(UTF8Encode(TargetWcpath)), Depth, IgnoreAncestry, Force, RecordOnly, DryRun,
-      nil, FCtx, SubPool));
+    SaveCancel := FOnCancel;
+    try
+      if Assigned(SvnCancelCallback) then
+        FOnCancel := SvnCancelCallback;
+      EncodedSource1 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source1)), SubPool);
+      EncodedSource2 := svn_path_uri_encode(PAnsiChar(UTF8Encode(Source2)), SubPool);
+      SvnCheck(svn_client_merge3(EncodedSource1, @Rev1, EncodedSource2, @Rev2,
+        PAnsiChar(UTF8Encode(TargetWcpath)), Depth, IgnoreAncestry, Force, RecordOnly, DryRun,
+        nil, FCtx, SubPool));
+    finally
+      FOnCancel := SaveCancel;
+    end;
   finally
     FNotifyCallback := nil;
     if NewPool then
