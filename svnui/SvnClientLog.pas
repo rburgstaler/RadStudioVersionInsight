@@ -59,6 +59,8 @@ type
   TLoadRevisionsCallBack = procedure(FirstRevision: Integer; Count: Integer) of object;
   TFileColorCallBack = function(Action: Char): TColor of object;
   TReverseMergeCallBack = procedure(const APathName: string; ARevision1, ARevision2: Integer) of object;
+  TCompareRevisionCallBack = procedure(AFileList: TStringList; ARevision1, ARevision2: Integer) of object;
+  TSaveRevisionCallBack = procedure(AFileList: TStringList; ARevision: Integer; const ADestPath: string) of object;
 
   TSvnLogFrame = class(TFrame)
     Splitter1: TSplitter;
@@ -83,6 +85,12 @@ type
     RevertToThisRevision1: TMenuItem;
     FileReverseMergeRevisionAction: TAction;
     RevertChangesFromThisRevision2: TMenuItem;
+    CompareWithPreviousRevisionAction: TAction;
+    CompareWithPreviousRevision1: TMenuItem;
+    FileCompareWithPreviousRevisionAction: TAction;
+    FileCompareWithPreviousRevision1: TMenuItem;
+    FileSaveRevisionAction: TAction;
+    FileSaveRevisionAction1: TMenuItem;
     procedure RevisionsSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure SearchKeyDown(Sender: TObject; var Key: Word;
@@ -102,6 +110,12 @@ type
     procedure ReverseMergeRevisionActionExecute(Sender: TObject);
     procedure ReverseMergeToRevisionActionExecute(Sender: TObject);
     procedure FileReverseMergeRevisionActionExecute(Sender: TObject);
+    procedure CompareWithPreviousRevisionActionUpdate(Sender: TObject);
+    procedure CompareWithPreviousRevisionActionExecute(Sender: TObject);
+    procedure FileCompareWithPreviousRevisionActionUpdate(Sender: TObject);
+    procedure FileCompareWithPreviousRevisionActionExecute(Sender: TObject);
+    procedure FileSaveRevisionActionExecute(Sender: TObject);
+    procedure FileSaveRevisionActionUpdate(Sender: TObject);
   protected
     FCount: Integer;
     FDoingSearch: Boolean;
@@ -110,6 +124,8 @@ type
     FReverseMergeCallBack: TReverseMergeCallBack;
     FRootPath: string;
     FRootRelativePath: string;
+    FCompareRevisionCallBack: TCompareRevisionCallBack;
+    FSaveRevisionCallBack: TSaveRevisionCallBack;
     FRevisionColumnWidths: array [0..3] of Integer;
     FRevisionList: TObjectList<TRevision>;
     FVisibleRevisions: TList<TRevision>;
@@ -137,12 +153,14 @@ type
     property ReverseMergeCallBack: TReverseMergeCallBack read FReverseMergeCallBack write FReverseMergeCallBack;
     property RootPath: string read FRootPath write FRootPath;
     property RootRelativePath: string read FRootRelativePath write FRootRelativePath;
+    property CompareRevisionCallBack: TCompareRevisionCallBack read FCompareRevisionCallBack write FCompareRevisionCallBack;
+    property SaveRevisionCallBack: TSaveRevisionCallBack read FSaveRevisionCallBack write FSaveRevisionCallBack;
     property SvnEditState: TSvnEditState read GetSvnEditState;
   end;
 
 implementation
 
-uses SvnUIConst, SvnUIUtils, Clipbrd;
+uses SvnUIConst, SvnUIUtils, Clipbrd, FileCtrl;
 
 {$R *.dfm}
 
@@ -171,6 +189,68 @@ end;
 
 { TSvnLogFrame }
 
+procedure TSvnLogFrame.CompareWithPreviousRevisionActionExecute(Sender: TObject);
+var
+  I: Integer;
+  Revision: TRevision;
+  FilesSL, FileList: TStringList;
+  S: string;
+begin
+  Revision := FVisibleRevisions[Revisions.Selected.Index];
+  FileList := TStringList.Create;
+  try
+    FilesSL := TStringList(Revisions.Selected.Data);
+    for I := 0 to FilesSL.Count - 1 do
+    begin
+      S := FilesSL[I];
+      if S[1] = 'M' then
+        FileList.Add(Copy(S, 2, MaxInt));
+    end;
+    if FileList.Count > 0 then
+      FCompareRevisionCallBack(FileList, StrToInt(Revision.FRevision), StrToInt(Revision.FRevision) - 1);
+  finally
+    FileList.Free;
+  end;
+end;
+
+procedure TSvnLogFrame.CompareWithPreviousRevisionActionUpdate(Sender: TObject);
+begin
+  CompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack);
+  CompareWithPreviousRevisionAction.Enabled := Assigned(Revisions.Selected);
+end;
+
+procedure TSvnLogFrame.FileCompareWithPreviousRevisionActionExecute(
+  Sender: TObject);
+var
+  I: Integer;
+  Revision: TRevision;
+  FilesSL, FileList: TStringList;
+  S: string;
+begin
+  Revision := FVisibleRevisions[Revisions.Selected.Index];
+  FileList := TStringList.Create;
+  try
+    FilesSL := TStringList(Revisions.Selected.Data);
+    for I := 0 to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        S := FilesSL[I];
+        if S[1] = 'M' then
+          FileList.Add(Copy(S, 2, MaxInt));
+      end;
+    if FileList.Count > 0 then
+      FCompareRevisionCallBack(FileList, StrToInt(Revision.FRevision), StrToInt(Revision.FRevision) - 1);
+  finally
+    FileList.Free;
+  end;
+end;
+
+procedure TSvnLogFrame.FileCompareWithPreviousRevisionActionUpdate(Sender: TObject);
+begin
+  FileCompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack);
+  FileCompareWithPreviousRevisionAction.Enabled := Assigned(Files.Selected);
+end;
+
 procedure TSvnLogFrame.FileReverseMergeRevisionActionExecute(Sender: TObject);
 var
   Revision: TRevision;
@@ -198,7 +278,7 @@ var
 begin
   FileReverseMergeRevisionAction.Visible := Assigned(FReverseMergeCallBack);
   ActionEnabled := False;
-  if Assigned(Files.Selected) then
+  if Assigned(Files.Selected) and (Files.SelCount = 1) then
   begin
     if FRootRelativePath = '' then
       ActionEnabled := True
@@ -210,6 +290,38 @@ begin
     end;
   end;
   FileReverseMergeRevisionAction.Enabled := ActionEnabled;
+end;
+
+procedure TSvnLogFrame.FileSaveRevisionActionExecute(Sender: TObject);
+var
+  I: Integer;
+  Revision: TRevision;
+  FilesSL, FileList: TStringList;
+  S, DestPath: string;
+begin
+  Revision := FVisibleRevisions[Revisions.Selected.Index];
+  FileList := TStringList.Create;
+  try
+    FilesSL := TStringList(Revisions.Selected.Data);
+    for I := 0 to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        S := FilesSL[I];
+        if S[1] <> 'D' then
+          FileList.Add(Copy(S, 2, MaxInt));
+      end;
+    if (FileList.Count > 0) and
+      SelectDirectory(Format(sSaveRevisionDestination, [Revision.FRevision]), '', DestPath, [sdNewFolder, sdNewUI, sdValidateDir]) then
+      FSaveRevisionCallBack(FileList, StrToInt(Revision.FRevision), DestPath);
+  finally
+    FileList.Free;
+  end;
+end;
+
+procedure TSvnLogFrame.FileSaveRevisionActionUpdate(Sender: TObject);
+begin
+  FileSaveRevisionAction.Visible := Assigned(FSaveRevisionCallBack);
+  FileSaveRevisionAction.Enabled := Assigned(Files.Selected);
 end;
 
 procedure TSvnLogFrame.ReverseMergeRevisionActionExecute(Sender: TObject);

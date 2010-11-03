@@ -62,6 +62,7 @@ resourcestring
   sRunReverseMergeToRevision = 'Do you really want to revert all changes in %s and go back to revision %s?';
   sRunFileReverseMergeRevision = 'Do you really want to revert the changes of revision %s in %s?';
   sDestination = 'Destination for checked out files.';
+  sSaveRevisionDestination = 'Destination to save selected files of revision %s';
   sConflictsRemaining = 'There are unresolved conflicts remaining.  Do you still wish to close?';
   sLoadRepoContentError = 'Cannot load repository content. Please check the entered URL.';
   sNoFiles = 'No file modifications found.  There is nothing to commit.';

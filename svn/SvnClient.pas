@@ -595,6 +595,7 @@ type
       SubPool: PAprPool = nil);
     procedure Resolved(const SvnPath: string; ConflictChoice: TSvnWcConflictChoice = SvnWcConflictChooseMerged;
       Recurse: Boolean = False; SubPool: PAprPool = nil);
+    procedure SaveFileContentToStream(const PathName: string; Revision: TSvnRevNum; OutputStream: TStream; SubPool: PAprPool = nil);
     function StringListToAprArray(List: TStrings; SubPool: PAprPool = nil): PAprArrayHeader;
     function SvnPathToNativePath(const SvnPath: string; SubPool: PAprPool = nil): string;
     procedure Update(PathNames: TStrings; Callback: TSvnNotifyCallback = nil; Recurse: Boolean = True;
@@ -2940,6 +2941,38 @@ begin
   FUserName := '';
   FPassword := '';
   FLastCommitInfoRevision := SVN_INVALID_REVNUM;
+end;
+
+procedure TSvnClient.SaveFileContentToStream(const PathName: string; Revision: TSvnRevNum;
+  OutputStream: TStream; SubPool: PAprPool);
+var
+  NewPool: Boolean;
+  PegRev, Rev: TSvnOptRevision;
+  Buffer: PSvnStringBuf;
+  Stream: PSvnStream;
+begin
+  if not Initialized then
+    Initialize;
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    FillChar(PegRev, SizeOf(TSvnOptRevision), 0);
+    PegRev.Kind := svnOptRevisionUnspecified;
+    FillChar(Rev, SizeOf(TSvnOptRevision), 0);
+    Rev.Kind := svnOptRevisionNumber;
+    Rev.Value.number := Revision;
+    Buffer := svn_stringbuf_create('', SubPool);
+    Stream := svn_stream_from_stringbuf(Buffer, SubPool);
+    FCancelled := False;
+    SvnCheck(svn_client_cat2(Stream, PAnsiChar(UTF8Encode(NativePathToSvnPath(PathName))), @PegRev, @Rev,
+      FCtx, SubPool));
+    OutputStream.Write(Buffer.data^, Buffer.len)
+  finally
+    FStatusCallback := nil;
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
 end;
 
 function TSvnClient.StringListToAprArray(List: TStrings;

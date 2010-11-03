@@ -114,6 +114,9 @@
 				<Form>SvnOptionsFrame</Form>
 				<DesignClass>TFrame</DesignClass>
 			</DCCReference>
+			<DCCReference Include="SvnClientProgress.pas">
+				<Form>SvnProgressDialog</Form>
+			</DCCReference>
 			<None Include="RAD Studio Version Insight MPL License.txt"/>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>

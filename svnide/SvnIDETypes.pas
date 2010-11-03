@@ -27,7 +27,8 @@ unit SvnIDETypes;
 interface
 
 uses
-  Classes, Graphics, svn_client, SvnIDEClient, SvnClientUpdate;
+  Classes, Graphics, Generics.Collections, ActiveX, svn_client, SvnIDEClient,
+  SvnClientUpdate, SvnClientProgress;
 
 type
   TCustomUpdateThread = class(TThread)
@@ -64,10 +65,67 @@ type
     constructor Create(SvnIDEClient: TSvnIDEClient; AURL, APath: string; ARevision1, ARevision2: Integer); reintroduce;
   end;
 
+  TCustomProgressThread = class(TThread)
+  protected
+    FAborted: Boolean;
+    FSyncMax: Integer;
+    FSyncPosition: Integer;
+    FSyncText: string;
+    FSvnProgressDialog: TSvnProgressDialog;
+    procedure AbortCallBack;
+    procedure SyncCloseDialog;
+    procedure SyncUpdateCaption;
+    procedure SyncUpdateProgress;
+    procedure UpdateCaption(const AText: string);
+    procedure UpdateProgress(APosition, AMax: Integer);
+  public
+    constructor Create;
+  end;
+
+  TCompareRevisionThread = class(TCustomProgressThread)
+  private
+    type
+      TCompareFile = class(TObject)
+      private
+        FFileName: string;
+        FRevision1: Integer;
+        FRevision2: Integer;
+        FStream1: IStream;
+        FStream2: IStream;
+      public
+        constructor Create(const AFileName: string; ARevision1, ARevision2: Integer);
+        property FileName: string read FFileName;
+        property Revision1: Integer read FRevision1;
+        property Revision2: Integer read FRevision2;
+        property Stream1: IStream read FStream1 write FStream1;
+        property Stream2: IStream read FStream2 write FStream2;
+      end;
+    var
+      FFiles: TObjectList<TCompareFile>;
+    procedure SyncCallCompare;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Execute; override;
+    procedure AddFile(const AFileName: string; ARevision1, ARevision2: Integer);
+  end;
+
+  TSaveRevisionThread = class(TCustomProgressThread)
+  private
+    FFiles: TStringList;
+    FPath: string;
+    FRevision: Integer;
+  public
+    constructor Create(ARevision: Integer; const APath: string);
+    destructor Destroy; override;
+    procedure Execute; override;
+    procedure AddFile(const AFileName: string);
+  end;
+
 implementation
 
 uses
-  SysUtils, SvnConst, SvnClient, SvnIDEConst;
+  SysUtils, SvnConst, SvnClient, SvnIDEConst, Forms, ToolsAPI;
 
 { TCustomUpdateThread }
 
@@ -182,6 +240,171 @@ begin
       raise;
   end;
   Synchronize(nil, SyncCompleted);
+end;
+
+{ TCustomProgressThread }
+
+constructor TCustomProgressThread.Create;
+begin
+  inherited Create(True);
+  FAborted := False;
+  FSvnProgressDialog := TSvnProgressDialog.Create(Application);
+  FSvnProgressDialog.AbortCallBack := AbortCallBack;
+  FSvnProgressDialog.Show;
+  FreeOnTerminate := True;
+end;
+
+procedure TCustomProgressThread.AbortCallBack;
+begin
+  FAborted := True;
+end;
+
+procedure TCustomProgressThread.SyncCloseDialog;
+begin
+  FSvnProgressDialog.Close;
+end;
+
+procedure TCustomProgressThread.SyncUpdateCaption;
+begin
+  FSvnProgressDialog.lbInfo.Caption := FSyncText;
+end;
+
+procedure TCustomProgressThread.SyncUpdateProgress;
+begin
+  FSvnProgressDialog.ProgressBar1.Max := FSyncMax;
+  FSvnProgressDialog.ProgressBar1.Position := FSyncPosition;
+end;
+
+procedure TCustomProgressThread.UpdateCaption(const AText: string);
+begin
+  FSyncText := AText;
+  Synchronize(SyncUpdateCaption);
+end;
+
+procedure TCustomProgressThread.UpdateProgress(APosition, AMax: Integer);
+begin
+  FSyncPosition := APosition;
+  FSyncMax := AMax;
+  Synchronize(SyncUpdateProgress);
+end;
+
+{ TCompareRevisionThread.TCompareFile }
+
+constructor TCompareRevisionThread.TCompareFile.Create(const AFileName: string; ARevision1,
+  ARevision2: Integer);
+begin
+  FFileName := AFileName;
+  FRevision1 := ARevision1;
+  FRevision2 := ARevision2;
+end;
+
+{ TCompareRevisionThread }
+
+constructor TCompareRevisionThread.Create;
+begin
+  inherited Create;
+  FFiles := TObjectList<TCompareFile>.Create;
+end;
+
+destructor TCompareRevisionThread.Destroy;
+begin
+  FFiles.Free;
+  inherited Destroy;
+end;
+
+procedure TCompareRevisionThread.AddFile(const AFileName: string; ARevision1,
+  ARevision2: Integer);
+begin
+  FFiles.Add(TCompareFile.Create(AFileName, ARevision1, ARevision2));
+end;
+
+procedure TCompareRevisionThread.Execute;
+var
+  I: Integer;
+  FileName: string;
+  MemStream: TMemoryStream;
+begin
+  for I := 0 to FFiles.Count - 1 do
+  begin
+    FileName := StringReplace(FFiles[I].FileName, '/', '\', [rfReplaceAll]);
+    UpdateCaption(Format(sRetrievingFileRevision, [FileName, FFiles[I].Revision1]));
+    MemStream := TMemoryStream.Create;
+    FFiles[I].Stream1 := TStreamAdapter.Create(MemStream, soOwned);
+    IDEClient.SvnClient.SaveFileContentToStream(FFiles[I].FileName, FFiles[I].Revision1, MemStream);
+    UpdateProgress(I * 2 + 1, FFiles.Count * 2);
+    if FAborted then
+      Break;
+    UpdateCaption(Format(sRetrievingFileRevision, [FileName, FFiles[I].Revision2]));
+    MemStream := TMemoryStream.Create;
+    FFiles[I].Stream2 := TStreamAdapter.Create(MemStream, soOwned);
+    IDEClient.SvnClient.SaveFileContentToStream(FFiles[I].FileName, FFiles[I].Revision2, MemStream);
+    UpdateProgress(I * 2 + 2, FFiles.Count * 2);
+    if FAborted then
+      Break;
+  end;
+  Synchronize(SyncCallCompare);
+end;
+
+procedure TCompareRevisionThread.SyncCallCompare;
+var
+  I: Integer;
+begin
+  FSvnProgressDialog.Free;
+  if not FAborted then
+    for I := 0 to FFiles.Count - 1 do
+    begin
+      (BorlandIDEServices as IOTACustomDifferenceManager).
+        ShowDifference(FFiles[I].Stream1, FFiles[I].Stream2, FFiles[I].FileName + '-' + IntToStr(FFiles[I].Revision1),
+          FFiles[I].FileName  + '-' + IntToStr(FFiles[I].Revision2), '', '', dfOTARevision, dfOTARevision, dtOTADefault);
+      FFiles[I].Stream1 := nil;
+      FFiles[I].Stream2 := nil;
+    end;
+end;
+
+{ TSaveRevisionThread }
+
+constructor TSaveRevisionThread.Create(ARevision: Integer; const APath: string);
+begin
+  inherited Create;
+  FFiles := TStringList.Create;
+  FPath := APath;
+  FRevision := ARevision;
+end;
+
+destructor TSaveRevisionThread.Destroy;
+begin
+  FFiles.Free;
+  inherited Destroy;
+end;
+
+procedure TSaveRevisionThread.AddFile(const AFileName: string);
+begin
+  FFiles.Add(AFileName);
+end;
+
+procedure TSaveRevisionThread.Execute;
+var
+  I: Integer;
+  FileName, DestFileName: string;
+  FileStream: TFileStream;
+begin
+  for I := 0 to FFiles.Count - 1 do
+  begin
+    FileName := StringReplace(FFiles[I], '/', '\', [rfReplaceAll]);
+    UpdateCaption(Format(sSavingFileRevision, [FileName, FRevision]));
+    DestFileName := IncludeTrailingPathDelimiter(FPath) + ExtractFileName(FileName);
+    DestFileName := ChangeFileExt(DestFileName, Format('-%d%s', [FRevision, ExtractFileExt(DestFileName)]));
+    FileStream := TFileStream.Create(DestFileName, fmCreate);
+    try
+      IDEClient.SvnClient.SaveFileContentToStream(FFiles[I], FRevision, FileStream);
+    finally
+      FileStream.Free;
+    end;
+    UpdateProgress(I + 1, FFiles.Count);
+    if FAborted then
+      Break;
+  end;
+  Synchronize(SyncCloseDialog);
 end;
 
 end.

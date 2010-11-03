@@ -69,6 +69,8 @@ resourcestring
   sVersionControlAddInOptionArea = 'Version Control';
   sMergeDialogCaption = 'Merge revisions %s - %s of %s into %s';
   sHead = 'HEAD';
+  sRetrievingFileRevision = 'Retrieving %s revision %d';
+  sSavingFileRevision = 'Saving %s revision %d';
 
 implementation
 

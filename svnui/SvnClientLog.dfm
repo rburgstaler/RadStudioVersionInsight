@@ -153,6 +153,7 @@ object SvnLogFrame: TSvnLogFrame
           WidthType = (
             -2)
         end>
+      MultiSelect = True
       OwnerData = True
       ReadOnly = True
       RowSelect = True
@@ -344,10 +345,28 @@ object SvnLogFrame: TSvnLogFrame
       OnExecute = FileReverseMergeRevisionActionExecute
       OnUpdate = FileReverseMergeRevisionActionUpdate
     end
+    object CompareWithPreviousRevisionAction: TAction
+      Caption = 'Compare with previous revision'
+      OnExecute = CompareWithPreviousRevisionActionExecute
+      OnUpdate = CompareWithPreviousRevisionActionUpdate
+    end
+    object FileCompareWithPreviousRevisionAction: TAction
+      Caption = 'Compare with previous revision'
+      OnExecute = FileCompareWithPreviousRevisionActionExecute
+      OnUpdate = FileCompareWithPreviousRevisionActionUpdate
+    end
+    object FileSaveRevisionAction: TAction
+      Caption = 'Save revision to...'
+      OnExecute = FileSaveRevisionActionExecute
+      OnUpdate = FileSaveRevisionActionUpdate
+    end
   end
   object RevisionPopupMenu: TPopupMenu
     Left = 464
     Top = 296
+    object CompareWithPreviousRevision1: TMenuItem
+      Action = CompareWithPreviousRevisionAction
+    end
     object RevertChangesFromThisRevision1: TMenuItem
       Action = ReverseMergeRevisionAction
     end
@@ -358,8 +377,14 @@ object SvnLogFrame: TSvnLogFrame
   object FilesPopupMenu: TPopupMenu
     Left = 488
     Top = 480
+    object FileCompareWithPreviousRevision1: TMenuItem
+      Action = FileCompareWithPreviousRevisionAction
+    end
     object RevertChangesFromThisRevision2: TMenuItem
       Action = FileReverseMergeRevisionAction
+    end
+    object FileSaveRevisionAction1: TMenuItem
+      Action = FileSaveRevisionAction
     end
   end
 end

@@ -112,6 +112,8 @@ type
     procedure LoadRevisionsCallBack(FirstRevision: Integer; Count: Integer);
     function FileColorCallBack(Action: Char): TColor;
     procedure ReverseMergeCallBack(const APathName: string; ARevision1, ARevision2: Integer);
+    procedure CompareRevisionCallBack(AFileList: TStringList; ARevision1, ARevision2: Integer);
+    procedure SaveRevisionCallBack(AFileList: TStringList; ARevision: Integer; const ADestPath: string);
   public
     constructor Create(SvnClient: TSvnClient; const ARootPath: string);
     destructor Destroy; override;
@@ -201,6 +203,27 @@ begin
   ShouldClose := True;
 end;
 
+procedure TLogView.CompareRevisionCallBack(AFileList: TStringList; ARevision1,
+  ARevision2: Integer);
+var
+  I: Integer;
+  CompareRevisionThread: TCompareRevisionThread;
+  URL, RootURL, Path, PathName: string;
+begin
+  CompareRevisionThread := TCompareRevisionThread.Create;
+  URL := IDEClient.SvnClient.FindRepository(FRootPath);
+  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
+  Path := SvnExcludeTrailingPathDelimiter(IDEClient.SvnClient.NativePathToSvnPath(FRootPath));
+  for I := 0 to AFileList.Count - 1 do
+  begin
+    PathName := AFileList[I];
+    if URL <> RootURL then
+      Delete(PathName, 1, Length(URL) - Length(RootURL));
+    CompareRevisionThread.AddFile(Path + PathName, ARevision1, ARevision2);
+  end;
+  CompareRevisionThread.Start;
+end;
+
 procedure TLogView.Completed;
 begin
   if Assigned(FSvnLogFrame) then
@@ -252,6 +275,8 @@ begin
   FSvnLogFrame.FileColorCallBack := FileColorCallBack;
   FSvnLogFrame.LoadRevisionsCallBack := LoadRevisionsCallBack;
   FSvnLogFrame.ReverseMergeCallBack := ReverseMergeCallBack;
+  FSvnLogFrame.CompareRevisionCallBack := CompareRevisionCallBack;
+  FSvnLogFrame.SaveRevisionCallBack := SaveRevisionCallBack;
   FSvnLogFrame.RootPath := ExcludeTrailingPathDelimiter(FRootPath);
   URL := IDEClient.SvnClient.FindRepository(FRootPath);
   RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
@@ -345,6 +370,27 @@ begin
     Path := Path + PathName;
   end;
   TMergeThread.Create(IDEClient, URL, Path, ARevision1, ARevision2);
+end;
+
+procedure TLogView.SaveRevisionCallBack(AFileList: TStringList;
+  ARevision: Integer; const ADestPath: string);
+var
+  I: Integer;
+  SaveRevisionThread: TSaveRevisionThread;
+  URL, RootURL, Path, PathName: string;
+begin
+  SaveRevisionThread := TSaveRevisionThread.Create(ARevision, ADestPath);
+  URL := IDEClient.SvnClient.FindRepository(FRootPath);
+  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
+  Path := SvnExcludeTrailingPathDelimiter(IDEClient.SvnClient.NativePathToSvnPath(FRootPath));
+  for I := 0 to AFileList.Count - 1 do
+  begin
+    PathName := AFileList[I];
+    if URL <> RootURL then
+      Delete(PathName, 1, Length(URL) - Length(RootURL));
+    SaveRevisionThread.AddFile(Path + PathName);
+  end;
+  SaveRevisionThread.Start;
 end;
 
 procedure TLogView.SelectView;
