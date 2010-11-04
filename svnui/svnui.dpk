@@ -53,7 +53,8 @@ contains
   SvnUITypes in 'SvnUITypes.pas',
   SvnUIUtils in 'SvnUIUtils.pas',
   SvnClientOptionsFrame in 'SvnClientOptionsFrame.pas' {SvnOptionsFrame: TFrame},
-  SvnClientProgress in 'SvnClientProgress.pas' {SvnProgressDialog};
+  SvnClientProgress in 'SvnClientProgress.pas' {SvnProgressDialog},
+  SvnClientRangeSelect in 'SvnClientRangeSelect.pas' {SvnRangeSelectDialog};
 
 end.
 

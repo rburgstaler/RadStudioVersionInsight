@@ -109,7 +109,7 @@ type
       ForceUpdate: Boolean);
     procedure Completed;
     { CallBacks }
-    procedure LoadRevisionsCallBack(FirstRevision: Integer; Count: Integer);
+    procedure LoadRevisionsCallBack(FirstRevision, LastRevision: Integer; Count: Integer);
     function FileColorCallBack(Action: Char): TColor;
     procedure ReverseMergeCallBack(const APathName: string; ARevision1, ARevision2: Integer);
     procedure CompareRevisionCallBack(AFileList: TStringList; ARevision1, ARevision2: Integer);
@@ -337,12 +337,13 @@ begin
   Result := sLogView;
 end;
 
-procedure TLogView.LoadRevisionsCallBack(FirstRevision, Count: Integer);
+procedure TLogView.LoadRevisionsCallBack(FirstRevision, LastRevision, Count: Integer);
 begin
   if FirstRevision = -1 then
     FFirst := 0;
   FSvnItem.LogLimit := Count;
   FSvnItem.LogFirstRev := FirstRevision;
+  FSvnItem.LogLastRev := LastRevision;
   FSvnItem.AsyncUpdate := Self;
   FSvnLogFrame.StartAsync;
   FSvnItem.AsyncReloadHistory;

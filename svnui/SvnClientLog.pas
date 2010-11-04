@@ -56,7 +56,7 @@ type
     destructor Destroy; override;
   end;
 
-  TLoadRevisionsCallBack = procedure(FirstRevision: Integer; Count: Integer) of object;
+  TLoadRevisionsCallBack = procedure(FirstRevision, LastRevision: Integer; Count: Integer) of object;
   TFileColorCallBack = function(Action: Char): TColor of object;
   TReverseMergeCallBack = procedure(const APathName: string; ARevision1, ARevision2: Integer) of object;
   TCompareRevisionCallBack = procedure(AFileList: TStringList; ARevision1, ARevision2: Integer) of object;
@@ -91,6 +91,7 @@ type
     FileCompareWithPreviousRevision1: TMenuItem;
     FileSaveRevisionAction: TAction;
     FileSaveRevisionAction1: TMenuItem;
+    Range: TToolButton;
     procedure RevisionsSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure SearchKeyDown(Sender: TObject; var Key: Word;
@@ -116,6 +117,7 @@ type
     procedure FileCompareWithPreviousRevisionActionExecute(Sender: TObject);
     procedure FileSaveRevisionActionExecute(Sender: TObject);
     procedure FileSaveRevisionActionUpdate(Sender: TObject);
+    procedure RangeClick(Sender: TObject);
   protected
     FCount: Integer;
     FDoingSearch: Boolean;
@@ -130,6 +132,8 @@ type
     FRevisionList: TObjectList<TRevision>;
     FVisibleRevisions: TList<TRevision>;
     FSaveCursor: TCursor;
+    FFromRevision: Integer;
+    FToRevision: Integer;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
     procedure DoCancelSearch;
@@ -160,7 +164,7 @@ type
 
 implementation
 
-uses SvnUIConst, SvnUIUtils, Clipbrd, FileCtrl;
+uses SvnUIConst, SvnUIUtils, Clipbrd, FileCtrl, SvnClientRangeSelect;
 
 {$R *.dfm}
 
@@ -451,6 +455,47 @@ procedure TSvnLogFrame.StartAsync;
 begin
 end;
 
+procedure TSvnLogFrame.RangeClick(Sender: TObject);
+var
+  I, FromRevision, ToRevision: Integer;
+  Update: Boolean;
+begin
+  SvnRangeSelectDialog := TSvnRangeSelectDialog.Create(Application);
+  try
+    SvnRangeSelectDialog.FromSelectRevision.Text := IntToStr(FFromRevision);
+    SvnRangeSelectDialog.ToCurrentRevision.Checked := FToRevision = -1;
+    if FToRevision <> -1 then
+      SvnRangeSelectDialog.ToSelectRevision.Text := IntToStr(FToRevision);
+    Update := SvnRangeSelectDialog.ShowModal = mrOK;
+    FromRevision := StrToIntDef(SvnRangeSelectDialog.FromSelectRevision.Text, -1);
+    if SvnRangeSelectDialog.ToCurrentRevision.Checked then
+      ToRevision := -1
+    else
+      ToRevision := StrToIntDef(SvnRangeSelectDialog.ToSelectRevision.Text, -2);
+  finally
+    SvnRangeSelectDialog.Free;
+  end;
+  if Update and (FromRevision >= 0) and (ToRevision >= -1) then
+  begin
+    FFromRevision := FromRevision;
+    FToRevision := ToRevision;
+    Revisions.Clear;
+    for I := 1 to Revisions.Columns.Count - 1 do
+      Revisions.Columns[I].Width := -2;
+    Application.ProcessMessages;
+    Files.Clear;
+    Comment.Lines.Text := '';
+    FVisibleRevisions.Clear;
+    FRevisionList.Clear;
+    Next.Enabled := False;
+    Refresh.Enabled := False;
+    Range.Enabled := False;
+    if ToRevision <> -1 then
+      Inc(ToRevision);//workaround that the last revision is shown too
+    FLoadRevisionsCallBack(ToRevision, FromRevision, 0);
+  end;
+end;
+
 procedure TSvnLogFrame.SearchRightButtonClick(Sender: TObject);
 begin
   DoCancelSearch;
@@ -465,6 +510,8 @@ begin
   FVisibleRevisions := TList<TRevision>.Create;
   FDoingSearch := False;
   FCount := DefaultRange;
+  FFromRevision := 0;
+  FToRevision := -1;
   InitRevisionColumnWidths;
 end;
 
@@ -619,13 +666,15 @@ begin
     First := -1;
   Next.Enabled := False;
   Refresh.Enabled := False;
-  FLoadRevisionsCallBack(First, DefaultRange);
+  Range.Enabled := False;
+  FLoadRevisionsCallBack(First, -1, DefaultRange);
 end;
 
 procedure TSvnLogFrame.NextCompleted;
 begin
   Next.Enabled := True;
   Refresh.Enabled := True;
+  Range.Enabled := True;
 end;
 
 function TSvnLogFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
@@ -746,7 +795,9 @@ begin
   FRevisionList.Clear;
   Next.Enabled := False;
   Refresh.Enabled := False;
-  FLoadRevisionsCallBack(-1, FCount);
+  Range.Enabled := False;
+  //TODO: take care of the selected range?
+  FLoadRevisionsCallBack(-1, -1, FCount);
 end;
 
 procedure TSvnLogFrame.RestoreRevisions;

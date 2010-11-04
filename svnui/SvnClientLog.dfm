@@ -103,8 +103,16 @@ object SvnLogFrame: TSvnLogFrame
         ImageIndex = 1
         OnClick = NextClick
       end
-      object Search: TButtonedEdit
+      object Range: TToolButton
         Left = 46
+        Top = 0
+        Hint = 'Range'
+        Caption = 'Range'
+        Enabled = False
+        OnClick = RangeClick
+      end
+      object Search: TButtonedEdit
+        Left = 69
         Top = 0
         Width = 325
         Height = 22

@@ -216,6 +216,7 @@ type
     FLockToken: string;
     FLogLimit: Integer;
     FLogFirstRev: TSvnRevNum;
+    FLogLastRev: TSvnRevNum;
     FParent: TSvnItem;
     FPathName: string;
     FPropRejectFile: string;
@@ -332,6 +333,7 @@ type
     property LockToken: string read FLockToken;
     property LogLimit: Integer read FLogLimit write FLogLimit;
     property LogFirstRev: TSvnRevNum read FLogFirstRev write FLogFirstRev;
+    property LogLastRev: TSvnRevNum read FLogLastRev write FLogLastRev;
     property Parent: TSvnItem read FParent;
     property PathName: string read FPathName;
     property PropCount: Integer read GetPropCount;
@@ -2124,6 +2126,7 @@ begin
   FPropValDelimiter := ';';
   FLogLimit := 0;
   FLogFirstRev := -1;
+  FLogLastRev := -1;
   if DoReload then
     Reload(Recurse, Update)
   else
@@ -4202,7 +4205,10 @@ begin
       end;
       FillChar(EndRevision, SizeOf(TSvnOptRevision), 0);
       EndRevision.Kind := svnOptRevisionNumber;
-      EndRevision.Value.number := 0;
+      if FSvnItem.LogLastRev = -1 then
+        EndRevision.Value.number := 0
+      else
+        EndRevision.Value.number := FSvnItem.LogLastRev;
       Targets := FSvnItem.SvnClient.PathNamesToAprArray([FSvnItem.SvnPathName], SubPool);
       FSvnItem.SvnClient.FCancelled := False;
       LCtx := FSvnItem.SvnClient.Ctx^;
