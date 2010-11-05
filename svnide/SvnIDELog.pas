@@ -66,7 +66,7 @@ type
 implementation
 
 uses SysUtils, SvnIDEConst, ToolsApi, SvnClientLog, SvnClient, DesignIntf, Forms,
-  SvnUITypes, SvnIDEUtils, ExtCtrls, Graphics, SvnIDETypes;
+  SvnUITypes, SvnIDEUtils, ExtCtrls, Graphics, SvnIDETypes, RegularExpressions;
 
 const
   sPMVLogParent = 'SvnLogParent';
@@ -82,11 +82,25 @@ type
   TLogView = class(TInterfacedObject, INTACustomEditorView,
     INTACustomEditorView150, IAsyncUpdate)
   protected
-    FSvnClient: TSvnClient;
-    FSvnLogFrame: TSvnLogFrame;
-    FSvnItem: TSvnItem;
-    FRootPath: string;
-    FFirst: Integer;
+    type
+      TBugIDParser = class(TObject)
+      private
+        FBugTraqLogRegEx: string;
+        FRegEx1: TRegEx;
+        FRegEx2: TRegEx;
+        procedure SetBugTraqLogRegEx(const Value: string);
+      public
+        constructor Create;
+        function GetBugID(const ALogMessage: string): string;
+        property BugTraqLogRegEx: string read FBugTraqLogRegEx write SetBugTraqLogRegEx;
+      end;
+    var
+      FBugIDParser: TBugIDParser;
+      FSvnClient: TSvnClient;
+      FSvnLogFrame: TSvnLogFrame;
+      FSvnItem: TSvnItem;
+      FRootPath: string;
+      FFirst: Integer;
     { INTACustomEditorView }
     function GetCanCloneView: Boolean;
     function CloneEditorView: INTACustomEditorView;
@@ -114,6 +128,8 @@ type
     procedure ReverseMergeCallBack(const APathName: string; ARevision1, ARevision2: Integer);
     procedure CompareRevisionCallBack(AFileList: TStringList; ARevision1, ARevision2: Integer);
     procedure SaveRevisionCallBack(AFileList: TStringList; ARevision: Integer; const ADestPath: string);
+    { Misc }
+    function GetBugTraqLogRegEx(APath: string): string;
   public
     constructor Create(SvnClient: TSvnClient; const ARootPath: string);
     destructor Destroy; override;
@@ -235,6 +251,8 @@ begin
   inherited Create;
   FSvnClient := SvnClient;
   FRootPath := ARootPath;
+  FBugIDParser := TBugIDParser.Create;
+  FBugIDParser.BugTraqLogRegEx := GetBugTraqLogRegEx(ARootPath);
 end;
 
 procedure TLogView.DeselectView;
@@ -244,6 +262,7 @@ end;
 
 destructor TLogView.Destroy;
 begin
+  FBugIDParser.Free;
   if FSvnItem <> nil then
     FSvnItem.Free;
   inherited;
@@ -285,6 +304,7 @@ begin
   else
     RootRelativePath := '';
   FSvnLogFrame.RootRelativePath := RootRelativePath;
+  FSvnLogFrame.ShowBugIDColumn := FBugIDParser.BugTraqLogRegEx <> '';
   FSvnItem := TSvnItem.Create(FSvnClient, nil, FRootPath, True);
   FSvnItem.AsyncUpdate := Self;
   FSvnItem.IncludeChangeFiles := True;
@@ -292,6 +312,30 @@ begin
   Application.ProcessMessages;
   FSvnLogFrame.StartAsync;
   FSvnItem.AsyncReloadHistory;
+end;
+
+function TLogView.GetBugTraqLogRegEx(APath: string): string;
+var
+  I: Integer;
+  SvnItem: TSvnItem;
+begin
+  while (Result = '') and FSvnClient.IsPathVersioned(APath) do
+  begin
+    SvnItem := TSvnItem.Create(FSvnClient, nil, APath);
+    try
+      SvnItem.PropValDelimiter := #10;
+      for I := 0 to SvnItem.PropCount - 1 do
+        if SvnItem.PropNames[I] = 'bugtraq:logregex' then // do not localize
+        begin
+          Result := SvnItem.PropValueFromIndex[I];
+          Break;
+        end;
+    finally
+      SvnItem.Free;
+    end;
+    if Result = '' then
+      APath := ExtractFilePath(ExcludeTrailingPathDelimiter(APath));
+  end;
 end;
 
 function TLogView.GetCanCloneView: Boolean;
@@ -405,6 +449,7 @@ var
   I: Integer;
   HistoryItem: TSvnHistoryItem;
   CanUpdate: Boolean;
+  BugID: string;
 begin
   CanUpdate := (FirstNewIndex = 0) or ((LastNewIndex - FFirst <> 0 ) and ((LastNewIndex - FFirst) Mod 20 = 0));
   if CanUpdate or ForceUpdate then
@@ -414,14 +459,64 @@ begin
       for I := FFirst to LastNewIndex do
       begin
         HistoryItem := SvnItem.HistoryItems[I];
+        if FBugIDParser.BugTraqLogRegEx <> '' then
+          BugID := FBugIDParser.GetBugID(HistoryItem.LogMessage)
+        else
+          BugID := '';
         FSvnLogFrame.AddRevisions(HistoryItem.Revision, HistoryItem.Time,
-          HistoryItem.Author, HistoryItem.LogMessage, HistoryItem.ChangeFiles);
+          HistoryItem.Author, HistoryItem.LogMessage, BugID, HistoryItem.ChangeFiles);
       end;
     finally
       FSvnLogFrame.EndUpdate;
     end;
     FFirst := LastNewIndex + 1;
     Application.ProcessMessages;
+  end;
+end;
+
+{ TLogView.TBugIDParser }
+
+constructor TLogView.TBugIDParser.Create;
+begin
+  FRegEx1 := TRegEx.Create('');
+  FRegEx2 := TRegEx.Create('');
+end;
+
+function TLogView.TBugIDParser.GetBugID(const ALogMessage: string): string;
+var
+  Match, MatchNr: TMatch;
+  BugIDs: TStringList;
+begin
+  BugIDs := TStringList.Create;
+  try
+    BugIDs.Duplicates := dupIgnore;
+    BugIDs.Sorted := True;
+    Match := FRegEx1.Match(ALogMessage);
+    while Match.Success do
+    begin
+      MatchNr := FRegEx2.Match(Match.Value);
+      BugIDs.Add(MatchNr.Value);
+      Match := Match.NextMatch;
+    end;
+    Result := TrimRight(StringReplace(BugIDs.Text, #13#10, ' ', [rfReplaceAll]));
+  finally
+    BugIDs.Free;
+  end;
+end;
+
+procedure TLogView.TBugIDParser.SetBugTraqLogRegEx(const Value: string);
+var
+  P: Integer;
+begin
+  if FBugTraqLogRegEx <> Value then
+  begin
+    P := Pos(#10, Value);
+    if P > 0 then
+    begin
+      FBugTraqLogRegEx := Value;
+      FRegEx1 := TRegEx.Create(Copy(Value, 1, P - 1));
+      FRegEx2 := TRegEx.Create(Copy(Value, P + 1, MaxInt));
+    end;
   end;
 end;
 

@@ -66,6 +66,7 @@ resourcestring
   sConflictsRemaining = 'There are unresolved conflicts remaining.  Do you still wish to close?';
   sLoadRepoContentError = 'Cannot load repository content. Please check the entered URL.';
   sNoFiles = 'No file modifications found.  There is nothing to commit.';
+  sBugIDCaption = 'Bug-ID';
 
 implementation
 

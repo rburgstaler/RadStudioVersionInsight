@@ -49,9 +49,10 @@ type
     FTime: string;
     FAuthor: string;
     FComment: string;
+    FBugID: string;
     FFiles: TStringList;
   public
-    constructor Create(const Revision, Time, Author, Comment: string;
+    constructor Create(const Revision, Time, Author, Comment, BugID: string;
       const Files: TStringList);
     destructor Destroy; override;
   end;
@@ -119,6 +120,7 @@ type
     procedure FileSaveRevisionActionUpdate(Sender: TObject);
     procedure RangeClick(Sender: TObject);
   protected
+    FBugIDColumnNo: Integer;
     FCount: Integer;
     FDoingSearch: Boolean;
     FFileColorCallBack: TFileColorCallBack;
@@ -128,7 +130,8 @@ type
     FRootRelativePath: string;
     FCompareRevisionCallBack: TCompareRevisionCallBack;
     FSaveRevisionCallBack: TSaveRevisionCallBack;
-    FRevisionColumnWidths: array [0..3] of Integer;
+    FRevisionColumns: array [0..4] of TListColumn;
+    FRevisionColumnWidths: array [0..4] of Integer;
     FRevisionList: TObjectList<TRevision>;
     FVisibleRevisions: TList<TRevision>;
     FSaveCursor: TCursor;
@@ -139,14 +142,16 @@ type
     procedure DoCancelSearch;
     procedure DoSearch(const Text: string);
     function GetCommentColumn: Integer;
+    function GetShowBugIDColumn: Boolean;
     function GetSvnEditState: TSvnEditState;
     procedure InitRevisionColumnWidths;
     procedure RestoreRevisions;
+    procedure SetShowBugIDColumn(const Value: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AddRevisions(Revision: Integer; Time: TDateTime; const Author: string;
-      const Comment: string; const Files: TStringList);
+      const Comment, BugID: string; const Files: TStringList);
     procedure BeginUpdate;
     procedure EndUpdate;
     procedure StartAsync;
@@ -159,6 +164,7 @@ type
     property RootRelativePath: string read FRootRelativePath write FRootRelativePath;
     property CompareRevisionCallBack: TCompareRevisionCallBack read FCompareRevisionCallBack write FCompareRevisionCallBack;
     property SaveRevisionCallBack: TSaveRevisionCallBack read FSaveRevisionCallBack write FSaveRevisionCallBack;
+    property ShowBugIDColumn: Boolean read GetShowBugIDColumn write SetShowBugIDColumn;
     property SvnEditState: TSvnEditState read GetSvnEditState;
   end;
 
@@ -170,13 +176,14 @@ uses SvnUIConst, SvnUIUtils, Clipbrd, FileCtrl, SvnClientRangeSelect;
 
 { TRevision }
 
-constructor TRevision.Create(const Revision, Time, Author, Comment: string;
+constructor TRevision.Create(const Revision, Time, Author, Comment, BugID: string;
       const Files: TStringList);
 begin
   FRevision := Revision;
   FTime := Time;
   FAuthor := Author;
   FComment := Comment;
+  FBugID := BugID;
   if Files <> nil then
   begin
     FFiles := TStringList.Create;
@@ -361,7 +368,7 @@ begin
 end;
 
 procedure TSvnLogFrame.AddRevisions(Revision: Integer; Time: TDateTime;
-  const Author, Comment: string; const Files: TStringList);
+  const Author, Comment, BugID: string; const Files: TStringList);
 var
   TempRev: string;
   TempTime: string;
@@ -370,7 +377,7 @@ begin
   FirstItem := Revisions.Items.Count = 0;
   TempRev := IntToStr(Revision);
   TempTime := DateTimeToStr(Time);
-  FRevisionList.Add(TRevision.Create(TempRev, TempTime, Author, Comment, Files));
+  FRevisionList.Add(TRevision.Create(TempRev, TempTime, Author, Comment, BugID, Files));
   AddRevisionToListView(FRevisionList.Last);
   if FirstItem then
     Revisions.Items[0].Selected := True;
@@ -378,7 +385,7 @@ end;
 
 procedure TSvnLogFrame.AddRevisionToListView(ARevision: TRevision);
 var
-  I, W: Integer;
+  I, W, LastColumn: Integer;
   S: string;
 begin
   if FVisibleRevisions.Count = 0 then
@@ -386,7 +393,10 @@ begin
   FVisibleRevisions.Add(ARevision);
   Revisions.Items.Count := FVisibleRevisions.Count;
   //emulation of LVSCW_AUTOSIZE
-  for I := Low(FRevisionColumnWidths) to High(FRevisionColumnWidths) do
+  LastColumn := High(FRevisionColumnWidths);
+  if FBugIDColumnNo = -1 then
+    Dec(LastColumn);
+  for I := Low(FRevisionColumnWidths) to LastColumn do
   begin
     case I of
       0: W := Revisions.StringWidth(ARevision.FRevision);
@@ -402,13 +412,15 @@ begin
            S := StringReplace(S, #10, '', [rfReplaceAll]);
            W := Revisions.StringWidth(S);
          end;
+      4: W := Revisions.StringWidth(ARevision.FBugID);
       else
         W := 0;
     end;
     if W > FRevisionColumnWidths[I] then
     begin
       FRevisionColumnWidths[I] := W;
-      Revisions.Columns[I].Width := W + 14;
+      if Assigned(FRevisionColumns[I]) then
+        FRevisionColumns[I].Width := W + 14;
     end;
   end;
 end;
@@ -501,7 +513,33 @@ begin
   DoCancelSearch;
 end;
 
+procedure TSvnLogFrame.SetShowBugIDColumn(const Value: Boolean);
+var
+  BugIDColumn: TListColumn;
+begin
+  if (FBugIDColumnNo <> -1) <> Value then
+  begin
+    if FBugIDColumnNo = -1 then
+    begin
+      BugIDColumn := TListColumn(Revisions.Columns.Insert(3));
+      FBugIDColumnNo := 3;
+      BugIDColumn.Caption := sBugIDCaption;
+      BugIDColumn.Width := -2;
+      FRevisionColumns[4] := BugIDColumn;
+      InitRevisionColumnWidths;
+    end
+    else
+    begin
+      FRevisionColumns[4] := nil;
+      Revisions.Columns.Delete(FBugIDColumnNo);
+      FBugIDColumnNo := -1;
+    end;
+  end;
+end;
+
 constructor TSvnLogFrame.Create(AOwner: TComponent);
+var
+  I: Integer;
 begin
   inherited;
   Name := Format('%s_%d', [Name, FUseCount]);
@@ -512,6 +550,11 @@ begin
   FCount := DefaultRange;
   FFromRevision := 0;
   FToRevision := -1;
+  FBugIDColumnNo := -1;
+  Assert(Revisions.Columns.Count = 4);
+  for I := 0 to 3 do
+    FRevisionColumns[I] := Revisions.Columns[I];
+  FRevisionColumns[4] := nil;
   InitRevisionColumnWidths;
 end;
 
@@ -621,6 +664,11 @@ begin
   Result := 3;
 end;
 
+function TSvnLogFrame.GetShowBugIDColumn: Boolean;
+begin
+  Result := FBugIDColumnNo <> -1;
+end;
+
 function TSvnLogFrame.GetSvnEditState: TSvnEditState;
 begin
   if Search.Focused then
@@ -648,13 +696,17 @@ end;
 
 procedure TSvnLogFrame.InitRevisionColumnWidths;
 var
-  I: Integer;
+  I, LastColumn: Integer;
 begin
-  for I := Low(FRevisionColumnWidths) to High(FRevisionColumnWidths) do
-  begin
-    FRevisionColumnWidths[I] := Revisions.StringWidth(Revisions.Columns[I].Caption);
-    Revisions.Columns[I].Width := FRevisionColumnWidths[I] + 14;
-  end;
+  LastColumn := High(FRevisionColumnWidths);
+  if FBugIDColumnNo = -1 then
+    Dec(LastColumn);
+  for I := Low(FRevisionColumnWidths) to LastColumn do
+    if Assigned(FRevisionColumns[I]) then
+    begin
+      FRevisionColumnWidths[I] := Revisions.StringWidth(FRevisionColumns[I].Caption);
+      FRevisionColumns[I].Width := FRevisionColumnWidths[I] + 14;
+    end;
 end;
 
 procedure TSvnLogFrame.NextClick(Sender: TObject);
@@ -829,6 +881,8 @@ begin
   Item.SubItems.Add(Revision.FAuthor);
   Item.SubItems.Add(Revision.FTime);
   Item.SubItems.Add(Revision.FComment);
+  if FBugIDColumnNo <> -1 then
+    Item.SubItems.Add(Revision.FBugID);
   Item.Data := Revision.FFiles;
 end;
 
