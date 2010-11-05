@@ -68,6 +68,7 @@ object SvnLogFrame: TSvnLogFrame
           WidthType = (
             -2)
         end>
+      MultiSelect = True
       OwnerData = True
       ReadOnly = True
       RowSelect = True
@@ -75,6 +76,7 @@ object SvnLogFrame: TSvnLogFrame
       TabOrder = 0
       ViewStyle = vsReport
       OnData = RevisionsData
+      OnDataStateChange = RevisionsDataStateChange
       OnSelectItem = RevisionsSelectItem
     end
     object ToolBar1: TToolBar
@@ -368,12 +370,20 @@ object SvnLogFrame: TSvnLogFrame
       OnExecute = FileSaveRevisionActionExecute
       OnUpdate = FileSaveRevisionActionUpdate
     end
+    object CompareRevisionsAction: TAction
+      Caption = 'Compare revisions'
+      OnExecute = CompareRevisionsActionExecute
+      OnUpdate = CompareRevisionsActionUpdate
+    end
   end
   object RevisionPopupMenu: TPopupMenu
     Left = 464
     Top = 296
     object CompareWithPreviousRevision1: TMenuItem
       Action = CompareWithPreviousRevisionAction
+    end
+    object CompareRevisions1: TMenuItem
+      Action = CompareRevisionsAction
     end
     object RevertChangesFromThisRevision1: TMenuItem
       Action = ReverseMergeRevisionAction

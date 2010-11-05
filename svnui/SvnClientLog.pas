@@ -93,6 +93,8 @@ type
     FileSaveRevisionAction: TAction;
     FileSaveRevisionAction1: TMenuItem;
     Range: TToolButton;
+    CompareRevisionsAction: TAction;
+    CompareRevisions1: TMenuItem;
     procedure RevisionsSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure SearchKeyDown(Sender: TObject; var Key: Word;
@@ -119,6 +121,10 @@ type
     procedure FileSaveRevisionActionExecute(Sender: TObject);
     procedure FileSaveRevisionActionUpdate(Sender: TObject);
     procedure RangeClick(Sender: TObject);
+    procedure CompareRevisionsActionUpdate(Sender: TObject);
+    procedure CompareRevisionsActionExecute(Sender: TObject);
+    procedure RevisionsDataStateChange(Sender: TObject; StartIndex,
+      EndIndex: Integer; OldState, NewState: TItemStates);
   protected
     FBugIDColumnNo: Integer;
     FCount: Integer;
@@ -137,6 +143,8 @@ type
     FSaveCursor: TCursor;
     FFromRevision: Integer;
     FToRevision: Integer;
+    FRevisionFiles: TStringList;
+    FExecutingSelectAll: Boolean;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
     procedure DoCancelSearch;
@@ -200,6 +208,82 @@ end;
 
 { TSvnLogFrame }
 
+procedure TSvnLogFrame.CompareRevisionsActionExecute(Sender: TObject);
+var
+  I, J, Idx, FirstRevisionIndex, SecondRevisionIndex: Integer;
+  FirstRevision, SecondRevision: TRevision;
+  FilesSL, FileList: TStringList;
+  S: string;
+  A: Char;
+begin
+  FirstRevision := nil;
+  SecondRevision := nil;
+  FirstRevisionIndex := -1;
+  SecondRevisionIndex := -1;
+  for I := 0 to Revisions.Items.Count - 1 do
+    if Revisions.Items[I].Selected then
+    begin
+      if not Assigned(FirstRevision) then
+        FirstRevision := FVisibleRevisions[I]
+      else
+      begin
+        SecondRevision := FVisibleRevisions[I];
+        Break;
+      end;
+    end;
+  if Assigned(SecondRevision) then
+  begin
+    for I := 0 to FRevisionList.Count -1 do
+    begin
+      if FRevisionList[I] = FirstRevision then
+        FirstRevisionIndex := I
+      else
+      if FRevisionList[I] = SecondRevision then
+        SecondRevisionIndex := I;
+      if (FirstRevisionIndex <> -1) and (SecondRevisionIndex <> -1) then
+        Break;
+    end;
+  end;
+  if (FirstRevisionIndex <> -1) and (SecondRevisionIndex <> -1) then
+  begin
+    FileList := TStringList.Create;
+    try
+      FileList.Sorted := True;
+      for I := SecondRevisionIndex - 1 downto FirstRevisionIndex do
+      begin
+        FilesSL := FRevisionList[I].FFiles;
+        for J := 0 to FilesSL.Count - 1 do
+        begin
+          A := FilesSL[J][1];
+          S := Copy(FilesSL[J], 2, MaxInt);
+          Idx := FileList.IndexOf(S);
+          if Idx <> -1 then
+          begin
+            if A = 'D' then
+              FileList.Delete(Idx);
+          end
+          else
+          if A <> 'D' then
+            FileList.AddObject(S, TObject(Ord(A)));
+        end;
+      end;
+      for I := FileList.Count - 1 downto 0 do
+        if FileList.Objects[I] = TObject(Ord('A')) then
+          FileList.Delete(I);
+      if FileList.Count > 0 then
+        FCompareRevisionCallBack(FileList, StrToInt(FirstRevision.FRevision), StrToInt(SecondRevision.FRevision));
+    finally
+      FileList.Free;
+    end;
+  end;
+end;
+
+procedure TSvnLogFrame.CompareRevisionsActionUpdate(Sender: TObject);
+begin
+  CompareRevisionsAction.Visible := Assigned(FCompareRevisionCallBack) and (Revisions.SelCount = 2);
+  CompareRevisionsAction.Enabled := CompareRevisionsAction.Visible;
+end;
+
 procedure TSvnLogFrame.CompareWithPreviousRevisionActionExecute(Sender: TObject);
 var
   I: Integer;
@@ -226,7 +310,7 @@ end;
 
 procedure TSvnLogFrame.CompareWithPreviousRevisionActionUpdate(Sender: TObject);
 begin
-  CompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack);
+  CompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack) and (Revisions.SelCount = 1);
   CompareWithPreviousRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
@@ -258,7 +342,7 @@ end;
 
 procedure TSvnLogFrame.FileCompareWithPreviousRevisionActionUpdate(Sender: TObject);
 begin
-  FileCompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack);
+  FileCompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack) and (Revisions.SelCount = 1);
   FileCompareWithPreviousRevisionAction.Enabled := Assigned(Files.Selected);
 end;
 
@@ -287,9 +371,9 @@ var
   ActionEnabled: Boolean;
   FilesSL: TStringList;
 begin
-  FileReverseMergeRevisionAction.Visible := Assigned(FReverseMergeCallBack);
+  FileReverseMergeRevisionAction.Visible := Assigned(FReverseMergeCallBack) and (Revisions.SelCount = 1);
   ActionEnabled := False;
-  if Assigned(Files.Selected) and (Files.SelCount = 1) then
+  if FileReverseMergeRevisionAction.Visible and Assigned(Files.Selected) and (Files.SelCount = 1) then
   begin
     if FRootRelativePath = '' then
       ActionEnabled := True
@@ -331,7 +415,7 @@ end;
 
 procedure TSvnLogFrame.FileSaveRevisionActionUpdate(Sender: TObject);
 begin
-  FileSaveRevisionAction.Visible := Assigned(FSaveRevisionCallBack);
+  FileSaveRevisionAction.Visible := Assigned(FSaveRevisionCallBack) and (Revisions.SelCount = 1);
   FileSaveRevisionAction.Enabled := Assigned(Files.Selected);
 end;
 
@@ -347,7 +431,7 @@ end;
 
 procedure TSvnLogFrame.ReverseMergeRevisionActionUpdate(Sender: TObject);
 begin
-  ReverseMergeRevisionAction.Visible := Assigned(FReverseMergeCallBack);
+  ReverseMergeRevisionAction.Visible := Assigned(FReverseMergeCallBack) and (Revisions.SelCount = 1);
   ReverseMergeRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
@@ -363,7 +447,7 @@ end;
 
 procedure TSvnLogFrame.ReverseMergeToRevisionActionUpdate(Sender: TObject);
 begin
-  ReverseMergeToRevisionAction.Visible := Assigned(FReverseMergeCallBack);
+  ReverseMergeToRevisionAction.Visible := Assigned(FReverseMergeCallBack) and (Revisions.SelCount = 1);
   ReverseMergeToRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
@@ -550,6 +634,8 @@ begin
   FCount := DefaultRange;
   FFromRevision := 0;
   FToRevision := -1;
+  FRevisionFiles := TStringList.Create;
+  FExecutingSelectAll := False;
   FBugIDColumnNo := -1;
   Assert(Revisions.Columns.Count = 4);
   for I := 0 to 3 do
@@ -560,6 +646,7 @@ end;
 
 destructor TSvnLogFrame.Destroy;
 begin
+  FRevisionFiles.Free;
   Revisions.Clear;//there is no sanity check in RevisionsData and freeing FVisibleRevisions would lead to an AV
   FVisibleRevisions.Free;
   FRevisionList.Free;
@@ -629,12 +716,17 @@ procedure TSvnLogFrame.FilesCustomDrawItem(Sender: TCustomListView;
   Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
 var
   TextColor: TColor;
+  FilesSL: TStringList;
 begin
   DefaultDraw := True;
   if Assigned(FFileColorCallBack) and
     (Revisions.Selected <> nil) and (Revisions.Selected.Data <> nil) then
   begin
-    TextColor := FFileColorCallBack(TStringList(Revisions.Selected.Data)[Item.Index][1]);
+    if Revisions.SelCount < 2 then
+      FilesSL := TStringList(Revisions.Selected.Data)
+    else
+      FilesSL := FRevisionFiles;
+    TextColor := FFileColorCallBack(FilesSL[Item.Index][1]);
     if TextColor <> clNone then
       Files.Canvas.Font.Color := TextColor;
   end;
@@ -647,7 +739,10 @@ var
 begin
   if (Revisions.Selected <> nil) and (Revisions.Selected.Data <> nil) then
   begin
-    FilesSL := TStringList(Revisions.Selected.Data);
+    if Revisions.SelCount < 2 then
+      FilesSL := TStringList(Revisions.Selected.Data)
+    else
+      FilesSL := FRevisionFiles;
     S := System.Copy(FilesSL[Item.Index], 2, MaxInt);
     case FilesSL[Item.Index][1] of
       'M': Item.Caption := sModified;
@@ -798,7 +893,15 @@ begin
     else
     if AEditAction = seaSelectAll then
     begin
-      Revisions.SelectAll;
+      Files.Items.Clear;
+      Comment.Clear;
+      FExecutingSelectAll := True;
+      try
+        Revisions.SelectAll;
+      finally
+        FExecutingSelectAll := False;
+      end;
+      RevisionsSelectItem(nil, nil, False);
       Result := True;
     end
     else
@@ -886,51 +989,112 @@ begin
   Item.Data := Revision.FFiles;
 end;
 
+procedure TSvnLogFrame.RevisionsDataStateChange(Sender: TObject; StartIndex,
+  EndIndex: Integer; OldState, NewState: TItemStates);
+begin
+  RevisionsSelectItem(nil, nil, False);
+end;
+
 procedure TSvnLogFrame.RevisionsSelectItem(Sender: TObject; Item: TListItem;
   Selected: Boolean);
 var
-  I, W: Integer;
+  I, J, W, Idx, ActionValue: Integer;
   FilesSL: TStringList;
   S: string;
+  NewAction: Char;
   ColumnWidths: array [0..1] of Integer;
 begin
-  Files.Items.BeginUpdate;
-  try
-    Files.Items.Count := 0;
-    if Revisions.Selected <> nil then
-    begin
-      Comment.Lines.Text := Revisions.Selected.SubItems[2];
-      if Revisions.Selected.Data <> nil then
+  if not FExecutingSelectAll then
+  begin
+    Files.Items.BeginUpdate;
+    try
+      Files.Items.Count := 0;
+      if Revisions.Selected <> nil then
       begin
-        FilesSL := TStringList(Revisions.Selected.Data);
-        Files.Items.Count := FilesSL.Count;
-        //get max column widths
-        for I := Low(ColumnWidths) to High(ColumnWidths) do
-          ColumnWidths[I] := 0;
-        for I := 0 to FilesSL.Count - 1 do
+        if Revisions.SelCount < 2 then
+          Comment.Lines.Text := Revisions.Selected.SubItems[2]
+        else
+          Comment.Clear;
+        if Revisions.Selected.Data <> nil then
         begin
-          S := System.Copy(FilesSL[I], 2, MaxInt);
-          W := Files.StringWidth(S);
-          if W > ColumnWidths[1] then
-            ColumnWidths[1] := W;
-          case FilesSL[I][1] of
-            'M': S := sModified;
-            'A': S := sAdded;
-            'D': S := sDeleted;
-            'R': S := sReplaced;
+          if Revisions.SelCount < 2 then
+            FilesSL := TStringList(Revisions.Selected.Data)
+          else
+          begin
+            FRevisionFiles.Clear;
+            FRevisionFiles.Sorted := True;
+            for I := 0 to Revisions.Items.Count - 1 do
+              if Revisions.Items[I].Selected and Assigned(FVisibleRevisions[I].FFiles) then
+              begin
+                FilesSL := FVisibleRevisions[I].FFiles;
+                for J := 0 to FilesSL.Count - 1 do
+                begin
+                  S := ' ' + Copy(FilesSL[J], 2, MaxInt);
+                  case FilesSL[J][1] of
+                    'M': ActionValue := 1;
+                    'A': ActionValue := 2;
+                    'D': ActionValue := 4;
+                    'R': ActionValue := 8;
+                    else
+                      ActionValue := 0;
+                  end;
+                  Idx := FRevisionFiles.IndexOf(S);
+                  if Idx <> -1 then
+                  begin
+                    if ActionValue <> 0 then
+                      FRevisionFiles.Objects[Idx] := TObject(Integer(FRevisionFiles.Objects[Idx]) or ActionValue);
+                  end
+                  else
+                    FRevisionFiles.AddObject(S, TObject(ActionValue));
+                end;
+              end;
+            FRevisionFiles.Sorted := False;
+            for I := 0 to FRevisionFiles.Count - 1 do
+            begin
+              case Integer(FRevisionFiles.Objects[I]) of
+                1:   NewAction := 'M';
+                2,3: NewAction := 'A';
+                4:   NewAction := 'D';
+                8:   NewAction := 'R';
+                else
+                  NewAction := ' ';
+              end;
+              if NewAction <> ' ' then
+                FRevisionFiles[I] := NewAction + Copy(FRevisionFiles[I], 2, MaxInt);
+            end;
+            FilesSL := FRevisionFiles;
           end;
-          W := Files.StringWidth(S);
-          if W > ColumnWidths[0] then
-            ColumnWidths[0] := W;
+          Files.Items.Count := FilesSL.Count;
+          //get max column widths
+          for I := Low(ColumnWidths) to High(ColumnWidths) do
+            ColumnWidths[I] := 0;
+          for I := 0 to FilesSL.Count - 1 do
+          begin
+            S := System.Copy(FilesSL[I], 2, MaxInt);
+            W := Files.StringWidth(S);
+            if W > ColumnWidths[1] then
+              ColumnWidths[1] := W;
+            case FilesSL[I][1] of
+              'M': S := sModified;
+              'A': S := sAdded;
+              'D': S := sDeleted;
+              'R': S := sReplaced;
+              else
+                S := Files.Columns[0].Caption;
+            end;
+            W := Files.StringWidth(S);
+            if W > ColumnWidths[0] then
+              ColumnWidths[0] := W;
+          end;
+          //set columns widths including a margin (using 14 as margin, because this is the observed
+          // margin with themes (no themes: first column 8, other columns 12; themes: first 10, other 14)
+          for I := Low(ColumnWidths) to High(ColumnWidths) do
+            Files.Columns[I].Width := ColumnWidths[I] + 14;
         end;
-        //set columns widths including a margin (using 14 as margin, because this is the observed
-        // margin with themes (no themes: first column 8, other columns 12; themes: first 10, other 14)
-        for I := Low(ColumnWidths) to High(ColumnWidths) do
-          Files.Columns[I].Width := ColumnWidths[I] + 14;
       end;
+    finally
+      Files.Items.EndUpdate;
     end;
-  finally
-    Files.Items.EndUpdate;
   end;
 end;
 
