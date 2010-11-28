@@ -125,7 +125,12 @@ type
 implementation
 
 uses
-  SysUtils, SvnConst, SvnClient, SvnIDEConst, Forms, ToolsAPI;
+  SysUtils, SvnConst, SvnClient, SvnIDEConst, Forms, ToolsAPI, FileCtrl;
+
+const
+  cFileNameTag = 'fn';
+  cFileNameTagOpenStr = '<' + cFileNameTag + '>';
+  cFileNameTagCloseStr = '</' + cFileNameTag + '>';
 
 { TCustomUpdateThread }
 
@@ -265,8 +270,40 @@ begin
 end;
 
 procedure TCustomProgressThread.SyncUpdateCaption;
+
+  function ShortenFileNameInString(const AInput, ATag: string; ACanvas: TCanvas; AMaxWidth: Integer): string;
+  var
+    P1, P2, TagLength, WidthWithoutFileName: Integer;
+    FileName: string;
+  begin
+    P1 := Pos('<' + ATag + '>', AInput);
+    if P1 > 0 then
+      P2 := Pos('</' + ATag + '>', AInput)
+    else
+      P2 := 0;
+    if P2 > 0 then
+    begin
+      Result := AInput;
+      TagLength := Length(ATag) + 2;
+      FileName := Copy(Result, P1 + TagLength, P2 - P1 - TagLength);
+      Delete(Result, P1, P2 - P1 + TagLength + 1);
+      if FileName <> '' then
+      begin
+        WidthWithoutFileName := ACanvas.TextWidth(Result);
+        FileName := FileCtrl.MinimizeName(FileName, ACanvas, AMaxWidth - WidthWithoutFileName);
+        Insert(FileName, Result, P1);
+      end;
+    end
+    else
+      Result := AInput;
+  end;
+
+var
+  S: string;
 begin
-  FSvnProgressDialog.lbInfo.Caption := FSyncText;
+  S := ShortenFileNameInString(FSyncText, cFileNameTag, FSvnProgressDialog.lbInfo.Canvas,
+    FSvnProgressDialog.ProgressBar1.Width);
+  FSvnProgressDialog.lbInfo.Caption := S;
 end;
 
 procedure TCustomProgressThread.SyncUpdateProgress;
@@ -327,14 +364,16 @@ begin
   for I := 0 to FFiles.Count - 1 do
   begin
     FileName := StringReplace(FFiles[I].FileName, '/', '\', [rfReplaceAll]);
-    UpdateCaption(Format(sRetrievingFileRevision, [FileName, FFiles[I].Revision1]));
+    UpdateCaption(Format(sRetrievingFileRevision,
+      [cFileNameTagOpenStr + FileName + cFileNameTagCloseStr, FFiles[I].Revision1]));
     MemStream := TMemoryStream.Create;
     FFiles[I].Stream1 := TStreamAdapter.Create(MemStream, soOwned);
     IDEClient.SvnClient.SaveFileContentToStream(FFiles[I].FileName, FFiles[I].Revision1, MemStream);
     UpdateProgress(I * 2 + 1, FFiles.Count * 2);
     if FAborted then
       Break;
-    UpdateCaption(Format(sRetrievingFileRevision, [FileName, FFiles[I].Revision2]));
+    UpdateCaption(Format(sRetrievingFileRevision,
+      [cFileNameTagOpenStr + FileName + cFileNameTagCloseStr, FFiles[I].Revision2]));
     MemStream := TMemoryStream.Create;
     FFiles[I].Stream2 := TStreamAdapter.Create(MemStream, soOwned);
     IDEClient.SvnClient.SaveFileContentToStream(FFiles[I].FileName, FFiles[I].Revision2, MemStream);
@@ -391,7 +430,8 @@ begin
   for I := 0 to FFiles.Count - 1 do
   begin
     FileName := StringReplace(FFiles[I], '/', '\', [rfReplaceAll]);
-    UpdateCaption(Format(sSavingFileRevision, [FileName, FRevision]));
+    UpdateCaption(Format(sSavingFileRevision,
+      [cFileNameTagOpenStr + FileName + cFileNameTagCloseStr, FRevision]));
     DestFileName := IncludeTrailingPathDelimiter(FPath) + ExtractFileName(FileName);
     DestFileName := ChangeFileExt(DestFileName, Format('-%d%s', [FRevision, ExtractFileExt(DestFileName)]));
     FileStream := TFileStream.Create(DestFileName, fmCreate);
