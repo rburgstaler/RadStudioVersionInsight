@@ -43,6 +43,7 @@ type
   PSvnListViewItem = ^TSvnListViewItem;
   TSvnListViewItem = class
   protected
+    FCopied: Boolean;
     FDirectory: Boolean;
     FPathName: string;
     FTextStatus: TSvnWCStatusKind;
@@ -51,9 +52,10 @@ type
     procedure SetTextStatus(Value: TSvnWCStatusKind);
   public
     constructor Create(const APathName: string; ATextStatus: TSvnWCStatusKind;
-      ADirectory: Boolean);
+      ADirectory, ACopied: Boolean);
     procedure NewValues(const APathName: string; ATextStatus: TSvnWCStatusKind;
-      ADirectory: Boolean);
+      ADirectory, ACopied: Boolean);
+    property Copied: Boolean read FCopied;
     property Directory: Boolean read FDirectory;
     property PathName: string read FPathName;
     property TextStatus: TSvnWCStatusKind read FTextStatus write SetTextStatus;
@@ -149,6 +151,7 @@ type
     procedure RebuildList;
     function ItemShown(const SvnListItem: TSvnListViewItem): Boolean;
     procedure SetURL(const AValue: string);
+    function StatusKindStrEx(Status: TSvnWCStatusKind; ACopied: Boolean): string;
     procedure UpdateCommitButton;
     procedure UpdateListView(const SvnListItem: TSvnListViewItem; ItemIndex: Integer);
     procedure ResizeStuff;
@@ -497,7 +500,8 @@ begin
           for I := 0 to FRefreshItemList.Count - 1 do
           begin
             SvnListViewItem := FRefreshItemList[I];
-            Add(TSvnListViewItem.Create(SvnListViewItem.PathName, SvnListViewItem.TextStatus, SvnListViewItem.Directory));
+            Add(TSvnListViewItem.Create(SvnListViewItem.PathName, SvnListViewItem.TextStatus,
+              SvnListViewItem.Directory, SvnListViewItem.Copied));
           end;
           for I := 0 to Files.Items.Count - 1 do
           begin
@@ -733,7 +737,7 @@ begin
           except
             // If an error occures renaming the file then it is ok to ignore it.
           end;
-          SvnListViewItem := TSvnListViewItem.Create('', svnWcStatusNormal, False);
+          SvnListViewItem := TSvnListViewItem.Create('', svnWcStatusNormal, False, False);
           try
             GetFileStatusCallBack(MissingList[I], SvnListViewItem);
             if SvnListViewItem.FTextStatus <> svnWcStatusMissing then
@@ -1086,8 +1090,8 @@ begin
       S := sRevertCheck;
       if FilesToRevertText.Count <= 7 then
         for I := 0 to FilesToRevertText.Count - 1 do
-          S := S + sLineBreak + Format('[%s] %s', [StatusKindStr(FilesToRevertText[I].TextStatus),
-            FilesToRevertText[I].PathName])
+          S := S + sLineBreak + Format('[%s] %s', [StatusKindStrEx(FilesToRevertText[I].TextStatus,
+            FilesToRevertText[I].Copied), FilesToRevertText[I].PathName])
       else
       begin
         AdditionalDirCount := 0;
@@ -1095,8 +1099,8 @@ begin
         for I := 0 to FilesToRevertText.Count - 1 do
         begin
           if I <= 4 then
-            S := S + sLineBreak + Format('[%s] %s', [StatusKindStr(FilesToRevertText[I].TextStatus),
-              FilesToRevertText[I].PathName])
+            S := S + sLineBreak + Format('[%s] %s', [StatusKindStrEx(FilesToRevertText[I].TextStatus,
+              FilesToRevertText[I].Copied), FilesToRevertText[I].PathName])
           else
           begin
             if FilesToRevertText[I].Directory then
@@ -1195,6 +1199,13 @@ begin
 end;
 
 
+function TSvnCommitFrame.StatusKindStrEx(Status: TSvnWCStatusKind; ACopied: Boolean): string;
+begin
+  Result := StatusKindStr(Status);
+  if (Status = svnWcStatusAdded) and ACopied then
+    Result := Result + ' (+)';
+end;
+
 procedure TSvnCommitFrame.UnversionedFilesClick(Sender: TObject);
 begin
   RebuildList;
@@ -1233,7 +1244,7 @@ begin
     ListItem.Caption := ExtractFileName(SvnListItem.PathName);
     ListItem.SubItems.Add(ExtractFilePath(SvnListItem.PathName));
     ListItem.SubItems.Add(ExtractFileExt(SvnListItem.PathName));
-    ListItem.SubItems.Add(StatusKindStr(SvnListItem.TextStatus));
+    ListItem.SubItems.Add(StatusKindStrEx(SvnListItem.TextStatus, SvnListItem.Copied));
     ListItem.Checked := CheckedState;
     ListItem.ImageIndex := SvnImageModule.GetShellImageIndex(SvnListItem.PathName);
     if FirstAdded then
@@ -1256,15 +1267,16 @@ end;
 { TSvnListViewItem }
 
 constructor TSvnListViewItem.Create(const APathName: string;
-  ATextStatus: TSvnWCStatusKind; ADirectory: Boolean);
+  ATextStatus: TSvnWCStatusKind; ADirectory, ACopied: Boolean);
 begin
   inherited Create;
-  NewValues(APathName, ATextStatus, ADirectory);
+  NewValues(APathName, ATextStatus, ADirectory, ACopied);
 end;
 
 procedure TSvnListViewItem.NewValues(const APathName: string;
-  ATextStatus: TSvnWCStatusKind; ADirectory: Boolean);
+  ATextStatus: TSvnWCStatusKind; ADirectory, ACopied: Boolean);
 begin
+  FCopied := ACopied;
   FDirectory := ADirectory;
   FPathName := APathName;
   FTextStatus := ATextStatus;

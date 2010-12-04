@@ -464,7 +464,7 @@ begin
         UnversionedFilesAndDirectories);
       for I := 0 to UnversionedFilesAndDirectories.Count - 1 do
         FrameAdd(TSvnListViewItem.Create(UnversionedFilesAndDirectories[I],
-          svnWcStatusUnversioned, UnversionedFilesAndDirectories.Objects[I] <> nil));
+          svnWcStatusUnversioned, UnversionedFilesAndDirectories.Objects[I] <> nil, False));
     end;
     for I := 0 to FilesAndDirectoriesInRepo.Count - 1 do
       FSvnClient.GetModifications(FilesAndDirectoriesInRepo[I], AModificationCallBack, True,
@@ -472,7 +472,7 @@ begin
     if (FRootType = rtExpicitFiles) and (AddedDirectories.Count > 0) then
     begin
       for I := 0 to AddedDirectories.Count - 1 do
-        FrameAdd(TSvnListViewItem.Create(AddedDirectories[I], svnWcStatusAdded, True));
+        FrameAdd(TSvnListViewItem.Create(AddedDirectories[I], svnWcStatusAdded, True, False));
       FilesAndDirectoriesInRepo.AddStrings(AddedDirectories);
     end;
     AURL := FSvnClient.GetBaseURL(FilesAndDirectoriesInRepo, TempBasePath);
@@ -582,7 +582,7 @@ begin
   begin
     if Item.TextStatus = svnWcStatusMissing then
       FFoundMissing := True;
-    FSvnCommitFrame.Add(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory));
+    FSvnCommitFrame.Add(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied));
   end;
 end;
 
@@ -593,7 +593,7 @@ begin
   begin
     if Item.TextStatus = svnWcStatusMissing then
       FFoundMissing := True;
-    FSvnCommitFrame.RefreshAdd(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory));
+    FSvnCommitFrame.RefreshAdd(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied));
   end;
 end;
 
@@ -656,7 +656,7 @@ end;
 procedure TCommit.StatusCallBack(Sender: TObject; Item: TSvnItem;
   var Cancel: Boolean);
 begin
-  FStatusItem^.NewValues(Item.PathName, Item.TextStatus, Item.IsDirectory);
+  FStatusItem^.NewValues(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied);
 end;
 
 procedure DoCommit(const SvnClient: TSvnClient; const CommitList: TStringList;
