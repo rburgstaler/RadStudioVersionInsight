@@ -158,10 +158,14 @@ type
     function CheckoutProjectWithConnection(var ProjectName: string;
       const Connection: string): Boolean;
     function GetName: string;
+    { Misc }
+    procedure InitNonFileIdentifiers;
   protected
     FSvnIDEClient: TSvnIDEClient;
+    FNonFileIdentifiers: TStringList;
   public
     constructor Create(const SvnIDEClient: TSvnIDEClient);
+    destructor Destroy; override;
   end;
 
   TParentSvnMenu = class(TSvnMenu)
@@ -417,6 +421,15 @@ constructor TSvnNotifier.Create(const SvnIDEClient: TSvnIDEClient);
 begin
   inherited Create;
   FSvnIDEClient := SvnIDEClient;
+  FNonFileIdentifiers := TStringList.Create;
+  FNonFileIdentifiers.Sorted := True;
+  InitNonFileIdentifiers;
+end;
+
+destructor TSvnNotifier.Destroy;
+begin
+  FNonFileIdentifiers.Free;
+  inherited Destroy;
 end;
 
 procedure TSvnNotifier.Destroyed;
@@ -434,24 +447,78 @@ begin
   Result := sSubversionName;
 end;
 
+procedure TSvnNotifier.InitNonFileIdentifiers;
+begin
+  FNonFileIdentifiers.Clear;
+  FNonFileIdentifiers.Add(sBaseContainer);
+  FNonFileIdentifiers.Add(sFileContainer);
+  FNonFileIdentifiers.Add(sProjectContainer);
+  FNonFileIdentifiers.Add(sProjectGroupContainer);
+  FNonFileIdentifiers.Add(sCategoryContainer);
+  FNonFileIdentifiers.Add(sDirectoryContainer);
+  FNonFileIdentifiers.Add(sReferencesContainer);
+  FNonFileIdentifiers.Add(sContainsContainer);
+  FNonFileIdentifiers.Add(sRequiresContainer);
+  FNonFileIdentifiers.Add(sVirtualFoldContainer);
+  FNonFileIdentifiers.Add(sBuildConfigContainer);
+  FNonFileIdentifiers.Add(sOptionSetContainer);
+end;
+
 function TSvnNotifier.IsFileManaged(const Project: IOTAProject;
   const IdentList: TStrings): Boolean;
-var
-  I: Integer;
-begin
-  Result := False;
-  for I := 0 to IdentList.Count - 1 do
-    if FileExists(IdentList[I]) then
+
+  function SaveIsPathVersioned(const APathName: string): Boolean;
+  begin
+    if FileExists(APathName) then
     begin
       try
-        Result := IDEClient.SvnClient.IsPathVersioned(IdentList[I]);
+        Result := IDEClient.SvnClient.IsPathVersioned(APathName);
       except
         Result := False;
         Exit;
       end;
-      if Result then
-        Break;
+    end
+    else
+      Result := False;
+  end;
+
+var
+  I, J: Integer;
+  Services: IOTAServices;
+  AdditionalFiles: TStringList;
+begin
+  Result := False;
+  for I := 0 to IdentList.Count - 1 do
+    if (FNonFileIdentifiers.IndexOf(IdentList[I]) = -1) and SaveIsPathVersioned(IdentList[I]) then
+    begin
+      Result := True;
+      Break;
     end;
+  //if it is a project and the *PROJ file is not versioned then check if there are other project
+  // files and if they are versioned (means for example DPROJ is not versioned, but DPR or DPK is)
+  if (not Result) and (IdentList.IndexOf(sProjectContainer) <> -1) and Assigned(Project) and
+    BorlandIDEServices.GetService(IOTAServices, Services) then
+  begin
+    for I := 0 to IdentList.Count - 1 do
+      if (FNonFileIdentifiers.IndexOf(IdentList[I]) = -1) and Services.IsProject(IdentList[I]) then
+      begin
+        AdditionalFiles := TStringList.Create;
+        try
+          Project.GetAssociatedFiles(IdentList[I], AdditionalFiles);
+          for J := 0 to AdditionalFiles.Count - 1 do
+            if (not SameFileName(AdditionalFiles[J], IdentList[I])) and
+              Services.IsProject(AdditionalFiles[J]) and SaveIsPathVersioned(AdditionalFiles[J]) then
+            begin
+              Result := True;
+              Break;
+            end;
+        finally
+          AdditionalFiles.Free;
+        end;
+        if Result then
+          Break;
+      end;
+  end;
 end;
 
 procedure TSvnNotifier.Modified;
