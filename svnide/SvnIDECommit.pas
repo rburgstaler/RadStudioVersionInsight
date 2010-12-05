@@ -72,7 +72,7 @@ type
   end;
 
   procedure DoCommit(const SvnClient: TSvnClient; const CommitList: TStringList;
-    const Comment: string; const RecentComments: TStringList);
+    const Comment: string; const RecentComments: TStringList; ADeleteLocalHistory: Boolean);
 
   procedure LoadRecentComments(const RecentComments:TStringList);
 
@@ -85,7 +85,7 @@ implementation
 uses SysUtils, ToolsApi, Forms, DesignIntf, ComCtrls, Controls, SvnIDEConst,
   SvnClientCommitFrame, svn_client, FileHistoryAPI, IStreams,
   ActiveX, Dialogs, SvnIDEClean, SvnIDEMessageView, Registry, SvnUITypes,
-  SvnIDEUtils, Graphics;
+  SvnIDEUtils, Graphics, IOUtils, Types;
 
 const
   sPMVCommit = 'Commit';
@@ -295,7 +295,7 @@ end;
 procedure TCommit.CommitCallBack(const CommitList: TStringList;
   const Comment: string; const RecentComments: TStringList);
 begin
-  DoCommit(FSvnClient, CommitList, Comment, RecentComments);
+  DoCommit(FSvnClient, CommitList, Comment, RecentComments, IDEClient.Options.DeleteBackupFilesAfterCommit);
 end;
 
 constructor TCommit.Create(SvnClient: TSvnClient; const DirectoryList: TStringList;
@@ -659,8 +659,32 @@ begin
   FStatusItem^.NewValues(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied);
 end;
 
+function DoDeleteCommitListLocalHistory(CommitList: TStringList): Integer;
+var
+  I, J: Integer;
+  Files: TStringDynArray;
+  Path, SearchPattern: string;
+begin
+  Result := 0;
+  for I := 0 to CommitList.Count - 1 do
+  begin
+    Path := ExtractFilePath(CommitList[I]) + '__history'; // do not localize
+    if DirectoryExists(Path) then
+    begin
+      SearchPattern := ExtractFileName(CommitList[I]) + '.~*';
+      Files := TDirectory.GetFiles(Path, SearchPattern);
+      for J := Low(Files) to High(Files) do
+        if Copy(Files[J], Length(Files[J]), 1) = '~' then
+        begin
+          DeleteFile(Files[J]);
+          Inc(Result);
+        end;
+    end;
+  end;
+end;
+
 procedure DoCommit(const SvnClient: TSvnClient; const CommitList: TStringList;
-  const Comment: string; const RecentComments: TStringList);
+  const Comment: string; const RecentComments: TStringList; ADeleteLocalHistory: Boolean);
 var
   I: Integer;
   S: string;
@@ -670,7 +694,11 @@ begin
   SaveRecentComments(RecentComments);
   try
     if SvnClient.Commit(CommitList, TrimRight(Comment), SvnMessageView.MessageViewCallBack) then
+    begin
       SvnMessageView.WriteTitle(Format(sCommitCompleted, [SvnClient.LastCommitInfoRevision]));
+      if ADeleteLocalHistory then
+        DoDeleteCommitListLocalHistory(CommitList);
+    end;
   except
     if ExceptObject is ESvnError then
     begin

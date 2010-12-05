@@ -43,11 +43,21 @@ interface
 uses SvnClient, svn_client, Classes, SysUtils, SvnIDEColors;
 
 type
+  TSvnOptions = class(TObject)
+  private
+    FDeleteBackupFilesAfterCommit: Boolean;
+  public
+    constructor Create;
+    procedure Load;
+    procedure Save;
+    property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+  end;
 
   TSvnIDEClient = class
   private
     FHistoryProviderIndex: Integer;
     FColors: TSvnColors;
+    FOptions: TSvnOptions;
     FSvnClient: TSvnClient;
     FSyncData: Pointer;
     FSvnInitialized: Boolean;
@@ -77,6 +87,7 @@ type
     constructor Create;
     destructor Destroy; override;
     property Colors: TSvnColors read FColors;
+    property Options: TSvnOptions read FOptions;
     function SvnInitialize: Boolean;
     property SvnClient: TSvnClient read GetSvnClient;
   end;
@@ -104,6 +115,8 @@ const
  sURLHistory = 'URLHistory';
  sUrlHistoryItem = 'URLHistory%d';
  MaxURLHistory = 20;
+ cOptions = 'Options';
+ cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
 
 type
   PSyncLoginPrompt = ^TSyncLoginPrompt;
@@ -152,12 +165,56 @@ begin
   RegisterAddInOptions;
 end;
 
+{ TSvnOptions }
+
+constructor TSvnOptions.Create;
+begin
+  inherited Create;
+  FDeleteBackupFilesAfterCommit := False;
+  Load;
+end;
+
+procedure TSvnOptions.Load;
+var
+  Reg: TRegistry;
+  BaseKey, Key: string;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + cOptions;
+    if not Reg.KeyExists(BaseKey) then
+      Exit;
+    Reg.OpenKeyReadOnly(BaseKey);
+    Key := cDeleteBackupFilesAfterCommit;
+    if Reg.ValueExists(Key) then
+      FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TSvnOptions.Save;
+var
+  Reg: TRegistry;
+  BaseKey: string;
+begin
+  Reg := TRegistry.Create;
+  try
+    BaseKey := BaseRegKey + cOptions;
+    Reg.OpenKey(BaseKey, True);
+    Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+  finally
+    Reg.Free;
+  end;
+end;
+
 { TSvnIDEClient }
 
 constructor TSvnIDEClient.Create;
 begin
   inherited;
   FColors := TSvnColors.Create;
+  FOptions := TSvnOptions.Create;
   Initialize;
 end;
 
@@ -165,6 +222,7 @@ destructor TSvnIDEClient.Destroy;
 begin
   Unloading := True;
   Finalize;
+  FOptions.Free;
   FColors.Free;
   inherited;
 end;

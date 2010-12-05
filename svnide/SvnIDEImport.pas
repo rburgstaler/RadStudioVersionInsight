@@ -396,7 +396,8 @@ begin
       end;
       for I := 0 to FCommitFiles.Count - 1 do
         CheckInList.Add(FCommitFiles[I]);
-      DoCommit(FSvnIDEClient.SvnClient, CheckInList, Comment, RecentComments);
+      DoCommit(FSvnIDEClient.SvnClient, CheckInList, Comment, RecentComments,
+        FSvnIDEClient.Options.DeleteBackupFilesAfterCommit);
     finally
       CheckInList.Free;
     end;

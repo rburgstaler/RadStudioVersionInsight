@@ -44,6 +44,8 @@ type
     cboxMerged: TColorBox;
     cboxModified: TColorBox;
     cbStatusColorsEnabled: TCheckBox;
+    GroupBox2: TGroupBox;
+    cbDeleteBackupFilesAfterCommit: TCheckBox;
   private
     { Private declarations }
   public
