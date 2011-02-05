@@ -34,6 +34,7 @@ contains
   HgIDEClient in 'HgIDEClient.pas',
   HgIDEHistory in 'HgIDEHistory.pas',
   HgAddInOptionsFrame in 'HgAddInOptionsFrame.pas' {frmHgTestsOptions: TFrame},
-  HgIDEAddInOptions in 'HgIDEAddInOptions.pas';
+  HgIDEAddInOptions in 'HgIDEAddInOptions.pas',
+  HgIDEConst in 'HgIDEConst.pas';
 
 end.

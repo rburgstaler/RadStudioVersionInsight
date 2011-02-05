@@ -70,7 +70,7 @@ type
 implementation
 
 uses
-  ComObj, ActiveX, SysUtils, Forms, Windows, ExtCtrls;
+  ComObj, ActiveX, SysUtils, Forms, Windows, ExtCtrls, HgIDEConst;
 
 const
   HgFileHistoryProvider = 'VersionInsight.HgFileHistoryProvider';  //Do not internationalize
@@ -258,8 +258,13 @@ begin
 end;
 
 function THgFileHistory.GetHintStr(Index: Integer): string;
+var
+  Item: THgHistoryItem;
 begin
-  Result := '';//FItem.HintStrings[Index];
+  Item := THgHistoryItem(FItem.HistoryItems[Index]);
+  Result := SAuthor + Item.Author + sLineBreak +
+    STime + DateTimeToStr(Item.Date) + sLineBreak +
+    SComment + Item.Subject;
 end;
 
 function THgFileHistory.GetHistoryStyle(Index: Integer): TOTAHistoryStyle;
