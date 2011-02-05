@@ -635,9 +635,16 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FGitExecutable + ' status ' + ExtractFileName(AFileName);
+    CmdLine := FGitExecutable + ' log --max-count=1 ' + ExtractFileName(AFileName);
     Res := Execute(CmdLine, Output);
-    Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
+    if (Res = 0) and (Pos('commit ', Output) = 1) then
+      Result := True
+    else
+    begin
+      CmdLine := FGitExecutable + ' status ' + ExtractFileName(AFileName);
+      Res := Execute(CmdLine, Output);
+      Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
+    end;
   finally
     SetCurrentDir(CurrentDir);
   end;
