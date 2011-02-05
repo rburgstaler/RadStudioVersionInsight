@@ -41,7 +41,8 @@ type
       Flags: Word; var Params; VarResult, ExcepInfo, ArgErr: Pointer): HResult; stdcall;
   end;
 
-  THgFileHistoryProvider = class(TDispInterfacedObject, IOTAFileHistoryProvider)
+  THgFileHistoryProvider = class(TDispInterfacedObject, IOTAFileHistoryProvider,
+    IOTAAsynchronousHistoryProvider)
   private
     FClient: THgClient;
     FItems: TStringList;
@@ -54,6 +55,10 @@ type
     function Get_Ident: WideString; safecall;
     function Get_Name: WideString; safecall;
     function GetFileHistory(const AFileName: WideString): IOTAFileHistory; safecall;
+
+    { IOTAAsynchronousHistoryProvider }
+    procedure StartAsynchronousUpdate(const AFileName: WideString;
+      const AsynchronousHistoryUpdater: IOTAAsynchronousHistoryUpdater);
   public
     constructor Create(HgIDEClient: THgIDEClient);
     destructor Destroy; override;
@@ -217,6 +222,74 @@ function THgFileHistoryProvider.SafeCallException(ExceptObject: TObject;
   ExceptAddr: Pointer): HResult;
 begin
   Result := HandleSafeCallException(ExceptObject, ExceptAddr, IOTAFileHistoryProvider, '', '');
+end;
+
+type
+  THgHistoryThread = class(TThread)
+  private
+    FAsynchronousHistoryUpdater: IOTAAsynchronousHistoryUpdater;
+    FHgItem: THgItem;
+    FFileHistory: IOTAFileHistory;
+    procedure Completed(Sender: TObject);
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(AHgItem: THgItem; AFileHistory: IOTAFileHistory; AsynchronousHistoryUpdater: IOTAAsynchronousHistoryUpdater);
+  end;
+
+{ THgHistoryThread }
+
+procedure THgHistoryThread.Completed(Sender: TObject);
+begin
+  FAsynchronousHistoryUpdater.UpdateHistoryItems(FFileHistory, 0, FHgItem.HistoryCount - 1);
+  FAsynchronousHistoryUpdater.Completed;
+end;
+
+constructor THgHistoryThread.Create(AHgItem: THgItem; AFileHistory: IOTAFileHistory; AsynchronousHistoryUpdater: IOTAAsynchronousHistoryUpdater);
+begin
+  FHgItem := AHgItem;
+  FFileHistory := AFileHistory;
+  FAsynchronousHistoryUpdater := AsynchronousHistoryUpdater;
+  FreeOnTerminate := True;
+  inherited Create;
+  OnTerminate := Completed;
+end;
+
+procedure THgHistoryThread.Execute;
+begin
+  NameThreadForDebugging('VerIns Hg History Updater');
+  FHgItem.LoadHistory;
+end;
+
+procedure THgFileHistoryProvider.StartAsynchronousUpdate(
+  const AFileName: WideString;
+  const AsynchronousHistoryUpdater: IOTAAsynchronousHistoryUpdater);
+var
+  Index: Integer;
+  Item: THgItem;
+begin
+  if (not CheckHgInitalize) or (not FClient.IsVersioned(AFileName)) then
+  begin
+    AsynchronousHistoryUpdater.Completed;
+    Exit;
+  end;
+
+  if FItems.Find(AFileName, Index) then
+  begin
+    Item := THgItem(FItems.Objects[Index]);
+    THgHistoryThread.Create(Item, THgFileHistory.Create(Item), AsynchronousHistoryUpdater);
+  end
+  else
+  begin
+    Item := THgItem.Create(FClient, AFileName);
+    try
+      FItems.AddObject({Item.PathName}AFileName, Item);
+      THgHistoryThread.Create(Item, THgFileHistory.Create(Item), AsynchronousHistoryUpdater);
+    except
+      Item.Free;
+      raise;
+    end;
+  end;
 end;
 
 { THgFileHistory }
