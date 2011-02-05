@@ -34,7 +34,8 @@ contains
   GitIDEClient in 'GitIDEClient.pas',
   GitClient in 'GitClient.pas',
   GitIDEAddInOptions in 'GitIDEAddInOptions.pas',
-  GitAddInOptionsFrame in 'GitAddInOptionsFrame.pas' {frmGitTestsOptions: TFrame};
+  GitAddInOptionsFrame in 'GitAddInOptionsFrame.pas' {frmGitTestsOptions: TFrame},
+  GitIDEConst in 'GitIDEConst.pas';
 
 end.
 

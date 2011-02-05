@@ -75,7 +75,7 @@ type
 implementation
 
 uses
-  ComObj, ActiveX, SysUtils, Forms, Windows, ExtCtrls;
+  ComObj, ActiveX, SysUtils, Forms, Windows, ExtCtrls, GitIDEConst;
 
 const
   GitFileHistoryProvider = 'VersionInsight.GitFileHistoryProvider';  //Do not internationalize
@@ -331,8 +331,13 @@ begin
 end;
 
 function TGitFileHistory.GetHintStr(Index: Integer): string;
+var
+  Item: TGitHistoryItem;
 begin
-  Result := '';//FItem.HintStrings[Index];
+  Item := TGitHistoryItem(FItem.HistoryItems[Index]);
+  Result := SAuthor + Item.Author + sLineBreak +
+    STime + DateTimeToStr(Item.Date) + sLineBreak +
+    SComment + Item.Subject;
 end;
 
 function TGitFileHistory.GetHistoryStyle(Index: Integer): TOTAHistoryStyle;
