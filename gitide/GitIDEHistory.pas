@@ -82,7 +82,7 @@ const
 
 type
   TGitFileHistory = class(TDispInterfacedObject, IOTAFileHistory, IGitFileHistory,
-    IOTAFileHistoryHint)
+    IOTAFileHistoryHint, IOTAAsynchronousAnnotationProvider)
   private
     FItem: TGitItem;
 
@@ -102,6 +102,11 @@ type
 
     { IOTAFileHistoryHint }
     function GetHintStr(Index: Integer): string;
+
+    { IOTAAsynchronousAnnotationProvider }
+    function CanAnnotateFile(const FileName: string): Boolean;
+    procedure StartAsynchronousUpdate(const FileName: string;
+      FileHistoryIndex: Integer; const AnnotationCompletion: IOTAAnnotationCompletion);
   public
     constructor Create(AItem: TGitItem);
     destructor Destroy; override;
@@ -294,6 +299,11 @@ end;
 
 { TGitFileHistory }
 
+function TGitFileHistory.CanAnnotateFile(const FileName: string): Boolean;
+begin
+  Result := True;
+end;
+
 constructor TGitFileHistory.Create(AItem: TGitItem);
 begin
   inherited Create;
@@ -389,6 +399,162 @@ function TGitFileHistory.SafeCallException(ExceptObject: TObject;
   ExceptAddr: Pointer): HResult;
 begin
   Result := HandleSafeCallException(ExceptObject, ExceptAddr, IOTAFileHistory, '', '');
+end;
+
+type
+  TGitAnnotationLineProvider = class(TInterfacedObject, IOTAAnnotationLineProvider)
+  private
+    FGitHistoryItem: TGitHistoryItem;
+    FMaxGutterWidth: Integer;
+    FMaxTime: Integer;
+    FMinTime: Integer;
+
+    { IOTAAnnotationLineProvider }
+    function GetCount: Integer;
+    function GetGutterInfo(Index: Integer): string;
+    function GetIntensity(Index: Integer): Integer;
+    function GetMaxGutterWidth: Integer;
+    function GetHintStr(Index: Integer): string;
+
+    procedure UpdateValues;
+  public
+    constructor Create(AGitHistoryItem: TGitHistoryItem);
+  end;
+
+{ TGitAnnotationLineProvider }
+
+constructor TGitAnnotationLineProvider.Create(AGitHistoryItem: TGitHistoryItem);
+begin
+  inherited Create;
+  FGitHistoryItem := AGitHistoryItem;
+  UpdateValues;
+end;
+
+function TGitAnnotationLineProvider.GetCount: Integer;
+begin
+  Result := FGitHistoryItem.BlameCount;
+end;
+
+function TGitAnnotationLineProvider.GetGutterInfo(Index: Integer): string;
+begin
+  Result := '';
+  Dec(Index);
+  if (Index >= 0) and (Index < FGitHistoryItem.BlameCount) and
+    Assigned(FGitHistoryItem.BlameItems[Index].HistoryItem) then
+      Result := Copy(FGitHistoryItem.BlameItems[Index].HistoryItem.Hash, 1, 7);
+end;
+
+function TGitAnnotationLineProvider.GetHintStr(Index: Integer): string;
+var
+  Item: TGitHistoryItem;
+begin
+  Result := '';
+  Dec(Index);
+  if (Index >= 0) and (Index < FGitHistoryItem.BlameCount) and
+    Assigned(FGitHistoryItem.BlameItems[Index].HistoryItem) then
+  begin
+    Item := FGitHistoryItem.BlameItems[Index].HistoryItem;
+    Result := SAuthor + Item.Author + sLineBreak +
+      STime + DateTimeToStr(Item.Date) + sLineBreak +
+      SComment + Item.Subject;
+  end;
+end;
+
+function TGitAnnotationLineProvider.GetIntensity(Index: Integer): Integer;
+var
+  Time: Integer;
+  Diff: Integer;
+begin
+  Result := -1;
+  Dec(Index);
+  if (Index >= 0) and (Index < FGitHistoryItem.BlameCount) and
+    Assigned(FGitHistoryItem.BlameItems[Index].HistoryItem) then
+  begin
+    Time := DateTimeToFileDate(FGitHistoryItem.BlameItems[Index].HistoryItem.Date);
+    Diff := FMaxTime - FMinTime;
+    Result := Trunc((Time - FMinTime) div ((Diff div 10) + 1)) * 100;
+  end;
+end;
+
+function TGitAnnotationLineProvider.GetMaxGutterWidth: Integer;
+begin
+  Result := FMaxGutterWidth;
+end;
+
+procedure TGitAnnotationLineProvider.UpdateValues;
+var
+  I, L, ItemTime: Integer;
+begin
+  FMaxGutterWidth := 0;
+  for I := 0 to FGitHistoryItem.BlameCount - 1 do
+    if Assigned(FGitHistoryItem.BlameItems[I].HistoryItem) then
+    begin
+      L := Length(Copy(FGitHistoryItem.BlameItems[I].HistoryItem.Hash, 1, 7));
+      if L > FMaxGutterWidth then
+        FMaxGutterWidth := L;
+    end;
+  Inc(FMaxGutterWidth);
+  FMinTime := 0;
+  FMaxTime := 0;
+  for I := 0 to FGitHistoryItem.Parent.HistoryCount - 1 do
+  begin
+    ItemTime := DateTimeToFileDate(FGitHistoryItem.Parent.HistoryItems[I].Date);
+    if I = 0 then
+    begin
+      FMinTime := ItemTime;
+      FMaxTime := ItemTime;
+    end
+    else
+    if ItemTime < FMinTime then
+      FMinTime := ItemTime
+    else
+    if ItemTime > FMaxTime then
+      FMaxTime := ItemTime;
+  end;
+end;
+
+type
+  TGitBlameThread = class(TThread)
+  private
+    FAnnotationCompletion: IOTAAnnotationCompletion;
+    FGitHistoryItem: TGitHistoryItem;
+    procedure Completed(Sender: TObject);
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(AGitHistoryItem: TGitHistoryItem; AnnotationCompletion: IOTAAnnotationCompletion);
+  end;
+
+{ TGitBlameThread }
+
+procedure TGitBlameThread.Completed(Sender: TObject);
+begin
+  FAnnotationCompletion.AnnotationComplete(TGitAnnotationLineProvider.Create(FGitHistoryItem));
+end;
+
+constructor TGitBlameThread.Create(AGitHistoryItem: TGitHistoryItem; AnnotationCompletion: IOTAAnnotationCompletion);
+begin
+  FGitHistoryItem := AGitHistoryItem;
+  FAnnotationCompletion := AnnotationCompletion;
+  FreeOnTerminate := True;
+  inherited Create;
+  OnTerminate := Completed;
+end;
+
+procedure TGitBlameThread.Execute;
+begin
+  NameThreadForDebugging('VerIns Git Blame Updater');
+  FGitHistoryItem.LoadBlame;
+end;
+
+procedure TGitFileHistory.StartAsynchronousUpdate(const FileName: string;
+  FileHistoryIndex: Integer;
+  const AnnotationCompletion: IOTAAnnotationCompletion);
+begin
+  if (FileHistoryIndex >= 0) and (FileHistoryIndex < FItem.HistoryCount) then
+    TGitBlameThread.Create(FItem.HistoryItems[FileHistoryIndex], AnnotationCompletion)
+  else
+    AnnotationCompletion.AnnotationComplete(nil);
 end;
 
 initialization

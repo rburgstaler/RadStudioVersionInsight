@@ -31,24 +31,33 @@ uses
 
 type
   TGitItem = class;
+  TGitBlameItem = class;
 
   TGitHistoryItem = class(TObject)
   private
     FAuthor: string;
     FAuthorEmail: string;
+    FBlameItems: TObjectList<TGitBlameItem>;
     FBody: string;
     FDate: TDateTime;
     FHash: string;
     FSubject: string;
     FParent: TGitItem;
+    function GetBlameCount: Integer;
+    function GetBlameItems(AIndex: Integer): TGitBlameItem;
   public
     constructor Create(AParent: TGitItem);
+    destructor Destroy; override;
     function GetFile: TBytes;
+    procedure LoadBlame;
     property Author: string read FAuthor;
     property AuthorEmail: string read FAuthorEmail;
+    property BlameCount: Integer read GetBlameCount;
+    property BlameItems[AIndex: Integer]: TGitBlameItem read GetBlameItems;
     property Body: string read FBody;
     property Date: TDateTime read FDate;
     property Hash: string read FHash;
+    property Parent: TGitItem read FParent;
     property Subject: string read FSubject;
   end;
 
@@ -56,9 +65,12 @@ type
   private
     FLineStr: string;
     FHistoryIndex: Integer;
+    FHistoryItem: TGitHistoryItem;
   public
     property LineStr: string read FLineStr write FLineStr;
+    //TODO: Remove HistoryIndex (-2 currently indicates a local change - should be replaced by a special TGitHistoryItem)
     property HistoryIndex: Integer read FHistoryIndex write FHistoryIndex;
+    property HistoryItem: TGitHistoryItem read FHistoryItem write FHistoryItem;
   end;
 
   TGitStatus = (gsAdded, gsModified, gsNormal, gsUnknown);
@@ -67,23 +79,17 @@ type
 
   TGitItem = class(TObject)
   private
-    FBlameItems: TObjectList<TGitBlameItem>;
     FFileName: string;
     FGitClient: TGitClient;
     FHistoryItems: TObjectList<TGitHistoryItem>;
     FStatus: TGitStatus;
     function GetHistoryCount: Integer;
     function GetHistoryItems(AIndex: Integer): TGitHistoryItem;
-    function GetBlameCount: Integer;
-    function GetBlameItems(AIndex: Integer): TGitBlameItem;
   public
     constructor Create(AGitClient: TGitClient; const AFileName: string);
     destructor Destroy; override;
-    procedure LoadBlame;
     procedure LoadHistory(AOnlyLast: Boolean = False);
     procedure LoadStatus;
-    property BlameCount: Integer read GetBlameCount;
-    property BlameItems[AIndex: Integer]: TGitBlameItem read GetBlameItems;
     property HistoryCount: Integer read GetHistoryCount;
     property HistoryItems[AIndex: Integer]: TGitHistoryItem read GetHistoryItems;
     property Status: TGitStatus read FStatus;
@@ -338,6 +344,23 @@ constructor TGitHistoryItem.Create(AParent: TGitItem);
 begin
   inherited Create;
   FParent := AParent;
+  FBlameItems := TObjectList<TGitBlameItem>.Create;
+end;
+
+destructor TGitHistoryItem.Destroy;
+begin
+  FBlameItems.Free;
+  inherited Destroy;
+end;
+
+function TGitHistoryItem.GetBlameCount: Integer;
+begin
+  Result := FBlameItems.Count;
+end;
+
+function TGitHistoryItem.GetBlameItems(AIndex: Integer): TGitBlameItem;
+begin
+  Result := FBlameItems[AIndex];
 end;
 
 function TGitHistoryItem.GetFile: TBytes;
@@ -365,46 +388,7 @@ begin
   end;
 end;
 
-{ TGitItem }
-
-constructor TGitItem.Create(AGitClient: TGitClient; const AFileName: string);
-begin
-  inherited Create;
-  FBlameItems := TObjectList<TGitBlameItem>.Create;
-  FGitClient := AGitClient;
-  FHistoryItems := TObjectList<TGitHistoryItem>.Create;
-  FFileName := AFileName;
-  FStatus := gsUnknown;
-end;
-
-destructor TGitItem.Destroy;
-begin
-  FHistoryItems.Free;
-  FBlameItems.Free;
-  inherited Destroy;
-end;
-
-function TGitItem.GetBlameCount: Integer;
-begin
-  Result := FBlameItems.Count;
-end;
-
-function TGitItem.GetBlameItems(AIndex: Integer): TGitBlameItem;
-begin
-  Result := FBlameItems[AIndex];
-end;
-
-function TGitItem.GetHistoryCount: Integer;
-begin
-  Result := FHistoryItems.Count;
-end;
-
-function TGitItem.GetHistoryItems(AIndex: Integer): TGitHistoryItem;
-begin
-  Result := FHistoryItems[AIndex];
-end;
-
-procedure TGitItem.LoadBlame;
+procedure TGitHistoryItem.LoadBlame;
 var
   I, J, P, Idx, Res: Integer;
   CmdLine, Output: string;
@@ -414,9 +398,9 @@ var
 begin
   CurrentDir := GetCurrentDir;
   try
-    SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FGitClient.GitExecutable + ' blame -l ';
-    CmdLine := CmdLine + ExtractFileName(FFileName);
+    SetCurrentDir(ExtractFilePath(FParent.FFileName));
+    CmdLine := FParent.FGitClient.GitExecutable + ' blame -l ' + FHash + ' ';
+    CmdLine := CmdLine + ExtractFileName(FParent.FFileName);
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -436,9 +420,9 @@ begin
         if Pos('^', Hash) = 1 then
           Delete(Hash, 1, 1);
         Idx := -1;
-        for J := 0 to HistoryCount - 1 do
+        for J := 0 to FParent.HistoryCount - 1 do
           //better Pos than =, because of ^39chars har
-          if Pos(Hash, HistoryItems[J].Hash) = 1 then
+          if Pos(Hash, FParent.HistoryItems[J].Hash) = 1 then
           begin
             Idx := J;
             Break;
@@ -446,6 +430,10 @@ begin
         if (Idx = -1) and (Pos(StringOfChar('0', 39), Hash) = 1) then
           Idx := -2;
         BlameItem.HistoryIndex := Idx;
+        if Idx >= 0 then
+          BlameItem.HistoryItem := FParent.HistoryItems[J]
+        else
+          BlameItem.HistoryItem := nil;
         P := Pos(')', S);
         if P > 0 then
         begin
@@ -467,6 +455,33 @@ begin
       OutputStrings.Free;
     end;
   end;
+end;
+
+{ TGitItem }
+
+constructor TGitItem.Create(AGitClient: TGitClient; const AFileName: string);
+begin
+  inherited Create;
+  FGitClient := AGitClient;
+  FHistoryItems := TObjectList<TGitHistoryItem>.Create;
+  FFileName := AFileName;
+  FStatus := gsUnknown;
+end;
+
+destructor TGitItem.Destroy;
+begin
+  FHistoryItems.Free;
+  inherited Destroy;
+end;
+
+function TGitItem.GetHistoryCount: Integer;
+begin
+  Result := FHistoryItems.Count;
+end;
+
+function TGitItem.GetHistoryItems(AIndex: Integer): TGitHistoryItem;
+begin
+  Result := FHistoryItems[AIndex];
 end;
 
 //http://www.kernel.org/pub/software/scm/git/docs/git-log.html
