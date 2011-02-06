@@ -31,26 +31,35 @@ uses
 
 type
   THgItem = class;
+  THgBlameItem = class;
 
   THgHistoryItem = class(TObject)
   private
     FAuthor: string;
     FAuthorEmail: string;
+    FBlameItems: TObjectList<THgBlameItem>;
     FBody: string;
     FDate: TDateTime;
     FChangeSet: string;
     FChangeSetID: Integer;
     FSubject: string;
     FParent: THgItem;
+    function GetBlameCount: Integer;
+    function GetBlameItems(AIndex: Integer): THgBlameItem;
   public
     constructor Create(AParent: THgItem);
+    destructor Destroy; override;
     function GetFile: TBytes;
+    procedure LoadBlame;
     property Author: string read FAuthor;
     property AuthorEmail: string read FAuthorEmail;
+    property BlameCount: Integer read GetBlameCount;
+    property BlameItems[AIndex: Integer]: THgBlameItem read GetBlameItems;
     property Body: string read FBody;
     property Date: TDateTime read FDate;
     property ChangeSet: string read FChangeSet;
     property ChangeSetID: Integer read FChangeSetID;
+    property Parent: THgItem read FParent;
     property Subject: string read FSubject;
   end;
 
@@ -58,9 +67,11 @@ type
   private
     FLineStr: string;
     FHistoryIndex: Integer;
+    FHistoryItem: THgHistoryItem;
   public
     property LineStr: string read FLineStr write FLineStr;
     property HistoryIndex: Integer read FHistoryIndex write FHistoryIndex;
+    property HistoryItem: THgHistoryItem read FHistoryItem write FHistoryItem;
   end;
 
   THgStatus = (gsAdded, gsModified, gsNormal, gsUnknown);
@@ -69,23 +80,17 @@ type
 
   THgItem = class(TObject)
   private
-    FBlameItems: TObjectList<THgBlameItem>;
     FFileName: string;
     FHgClient: THgClient;
     FHistoryItems: TObjectList<THgHistoryItem>;
     FStatus: THgStatus;
     function GetHistoryCount: Integer;
     function GetHistoryItems(AIndex: Integer): THgHistoryItem;
-    function GetBlameCount: Integer;
-    function GetBlameItems(AIndex: Integer): THgBlameItem;
   public
     constructor Create(AHgClient: THgClient; const AFileName: string);
     destructor Destroy; override;
-    procedure LoadBlame;
     procedure LoadHistory(AOnlyLast: Boolean = False);
     procedure LoadStatus;
-    property BlameCount: Integer read GetBlameCount;
-    property BlameItems[AIndex: Integer]: THgBlameItem read GetBlameItems;
     property HistoryCount: Integer read GetHistoryCount;
     property HistoryItems[AIndex: Integer]: THgHistoryItem read GetHistoryItems;
     property Status: THgStatus read FStatus;
@@ -340,6 +345,23 @@ constructor THgHistoryItem.Create(AParent: THgItem);
 begin
   inherited Create;
   FParent := AParent;
+  FBlameItems := TObjectList<THgBlameItem>.Create;
+end;
+
+destructor THgHistoryItem.Destroy;
+begin
+  FBlameItems.Free;
+  inherited Destroy;
+end;
+
+function THgHistoryItem.GetBlameCount: Integer;
+begin
+  Result := FBlameItems.Count;
+end;
+
+function THgHistoryItem.GetBlameItems(AIndex: Integer): THgBlameItem;
+begin
+  Result := FBlameItems[AIndex];
 end;
 
 function THgHistoryItem.GetFile: TBytes;
@@ -362,46 +384,7 @@ begin
   end;
 end;
 
-{ THgItem }
-
-constructor THgItem.Create(AHgClient: THgClient; const AFileName: string);
-begin
-  inherited Create;
-  FBlameItems := TObjectList<THgBlameItem>.Create;
-  FHgClient := AHgClient;
-  FHistoryItems := TObjectList<THgHistoryItem>.Create;
-  FFileName := AFileName;
-  FStatus := gsUnknown;
-end;
-
-destructor THgItem.Destroy;
-begin
-  FHistoryItems.Free;
-  FBlameItems.Free;
-  inherited Destroy;
-end;
-
-function THgItem.GetBlameCount: Integer;
-begin
-  Result := FBlameItems.Count;
-end;
-
-function THgItem.GetBlameItems(AIndex: Integer): THgBlameItem;
-begin
-  Result := FBlameItems[AIndex];
-end;
-
-function THgItem.GetHistoryCount: Integer;
-begin
-  Result := FHistoryItems.Count;
-end;
-
-function THgItem.GetHistoryItems(AIndex: Integer): THgHistoryItem;
-begin
-  Result := FHistoryItems[AIndex];
-end;
-
-procedure THgItem.LoadBlame;
+procedure THgHistoryItem.LoadBlame;
 var
   I, J, P, ID, Idx, Res: Integer;
   CmdLine, Output: string;
@@ -411,9 +394,9 @@ var
 begin
   CurrentDir := GetCurrentDir;
   try
-    SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FHgClient.HgExecutable + ' annotate ';
-    CmdLine := CmdLine + ExtractFileName(FFileName);
+    SetCurrentDir(ExtractFilePath(FParent.FFileName));
+    CmdLine := FParent.FHgClient.HgExecutable + Format(' annotate -r %d ', [FChangeSetID]);
+    CmdLine := CmdLine + ExtractFileName(FParent.FFileName);
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -434,13 +417,17 @@ begin
         begin
           ID := StrToIntDef(Copy(S, 1, P - 1), -1);
           Idx := -1;
-          for J := 0 to HistoryCount - 1 do
-            if ID = HistoryItems[J].ChangeSetID then
+          for J := 0 to FParent.HistoryCount - 1 do
+            if ID = FParent.HistoryItems[J].ChangeSetID then
             begin
               Idx := J;
               Break;
             end;
           BlameItem.HistoryIndex := Idx;
+          if Idx <> -1 then
+            BlameItem.HistoryItem := FParent.HistoryItems[Idx]
+          else
+            BlameItem.HistoryItem := nil;
           BlameItem.LineStr := Copy(S, P + 2, Length(S));
         end;
         Inc(I);
@@ -449,6 +436,33 @@ begin
       OutputStrings.Free;
     end;
   end;
+end;
+
+{ THgItem }
+
+constructor THgItem.Create(AHgClient: THgClient; const AFileName: string);
+begin
+  inherited Create;
+  FHgClient := AHgClient;
+  FHistoryItems := TObjectList<THgHistoryItem>.Create;
+  FFileName := AFileName;
+  FStatus := gsUnknown;
+end;
+
+destructor THgItem.Destroy;
+begin
+  FHistoryItems.Free;
+  inherited Destroy;
+end;
+
+function THgItem.GetHistoryCount: Integer;
+begin
+  Result := FHistoryItems.Count;
+end;
+
+function THgItem.GetHistoryItems(AIndex: Integer): THgHistoryItem;
+begin
+  Result := FHistoryItems[AIndex];
 end;
 
 function ConvertDate(const AStr: string): TDateTime;

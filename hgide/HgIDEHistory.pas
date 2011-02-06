@@ -82,7 +82,7 @@ const
 
 type
   THgFileHistory = class(TDispInterfacedObject, IOTAFileHistory, IHgFileHistory,
-    IOTAFileHistoryHint)
+    IOTAFileHistoryHint, IOTAAsynchronousAnnotationProvider)
   private
     FItem: THgItem;
 
@@ -102,6 +102,11 @@ type
 
     { IOTAFileHistoryHint }
     function GetHintStr(Index: Integer): string;
+
+    { IOTAAsynchronousAnnotationProvider }
+    function CanAnnotateFile(const FileName: string): Boolean;
+    procedure StartAsynchronousUpdate(const FileName: string;
+      FileHistoryIndex: Integer; const AnnotationCompletion: IOTAAnnotationCompletion);
   public
     constructor Create(AItem: THgItem);
     destructor Destroy; override;
@@ -294,6 +299,11 @@ end;
 
 { THgFileHistory }
 
+function THgFileHistory.CanAnnotateFile(const FileName: string): Boolean;
+begin
+  Result := True;
+end;
+
 constructor THgFileHistory.Create(AItem: THgItem);
 begin
   inherited Create;
@@ -389,6 +399,162 @@ function THgFileHistory.SafeCallException(ExceptObject: TObject;
   ExceptAddr: Pointer): HResult;
 begin
   Result := HandleSafeCallException(ExceptObject, ExceptAddr, IOTAFileHistory, '', '');
+end;
+
+type
+  THgAnnotationLineProvider = class(TInterfacedObject, IOTAAnnotationLineProvider)
+  private
+    FHgHistoryItem: THgHistoryItem;
+    FMaxGutterWidth: Integer;
+    FMaxTime: Integer;
+    FMinTime: Integer;
+
+    { IOTAAnnotationLineProvider }
+    function GetCount: Integer;
+    function GetGutterInfo(Index: Integer): string;
+    function GetIntensity(Index: Integer): Integer;
+    function GetMaxGutterWidth: Integer;
+    function GetHintStr(Index: Integer): string;
+
+    procedure UpdateValues;
+  public
+    constructor Create(AHgHistoryItem: THgHistoryItem);
+  end;
+
+{ THgAnnotationLineProvider }
+
+constructor THgAnnotationLineProvider.Create(AHgHistoryItem: THgHistoryItem);
+begin
+  inherited Create;
+  FHgHistoryItem := AHgHistoryItem;
+  UpdateValues;
+end;
+
+function THgAnnotationLineProvider.GetCount: Integer;
+begin
+  Result := FHgHistoryItem.BlameCount;
+end;
+
+function THgAnnotationLineProvider.GetGutterInfo(Index: Integer): string;
+begin
+  Result := '';
+  Dec(Index);
+  if (Index >= 0) and (Index < FHgHistoryItem.BlameCount) and
+    Assigned(FHgHistoryItem.BlameItems[Index].HistoryItem) then
+      Result := IntToStr(FHgHistoryItem.BlameItems[Index].HistoryItem.ChangeSetID);
+end;
+
+function THgAnnotationLineProvider.GetHintStr(Index: Integer): string;
+var
+  Item: THgHistoryItem;
+begin
+  Result := '';
+  Dec(Index);
+  if (Index >= 0) and (Index < FHgHistoryItem.BlameCount) and
+    Assigned(FHgHistoryItem.BlameItems[Index].HistoryItem) then
+  begin
+    Item := FHgHistoryItem.BlameItems[Index].HistoryItem;
+    Result := SAuthor + Item.Author + sLineBreak +
+      STime + DateTimeToStr(Item.Date) + sLineBreak +
+      SComment + Item.Subject;
+  end;
+end;
+
+function THgAnnotationLineProvider.GetIntensity(Index: Integer): Integer;
+var
+  Time: Integer;
+  Diff: Integer;
+begin
+  Result := -1;
+  Dec(Index);
+  if (Index >= 0) and (Index < FHgHistoryItem.BlameCount) and
+    Assigned(FHgHistoryItem.BlameItems[Index].HistoryItem) then
+  begin
+    Time := DateTimeToFileDate(FHgHistoryItem.BlameItems[Index].HistoryItem.Date);
+    Diff := FMaxTime - FMinTime;
+    Result := Trunc((Time - FMinTime) div ((Diff div 10) + 1)) * 100;
+  end;
+end;
+
+function THgAnnotationLineProvider.GetMaxGutterWidth: Integer;
+begin
+  Result := FMaxGutterWidth;
+end;
+
+procedure THgAnnotationLineProvider.UpdateValues;
+var
+  I, L, ItemTime: Integer;
+begin
+  FMaxGutterWidth := 0;
+  for I := 0 to FHgHistoryItem.BlameCount - 1 do
+    if Assigned(FHgHistoryItem.BlameItems[I].HistoryItem) then
+    begin
+      L := Length(IntToStr(FHgHistoryItem.BlameItems[I].HistoryItem.ChangeSetID));
+      if L > FMaxGutterWidth then
+        FMaxGutterWidth := L;
+    end;
+  Inc(FMaxGutterWidth);
+  FMinTime := 0;
+  FMaxTime := 0;
+  for I := 0 to FHgHistoryItem.Parent.HistoryCount - 1 do
+  begin
+    ItemTime := DateTimeToFileDate(FHgHistoryItem.Parent.HistoryItems[I].Date);
+    if I = 0 then
+    begin
+      FMinTime := ItemTime;
+      FMaxTime := ItemTime;
+    end
+    else
+    if ItemTime < FMinTime then
+      FMinTime := ItemTime
+    else
+    if ItemTime > FMaxTime then
+      FMaxTime := ItemTime;
+  end;
+end;
+
+type
+  THgBlameThread = class(TThread)
+  private
+    FAnnotationCompletion: IOTAAnnotationCompletion;
+    FHgHistoryItem: THgHistoryItem;
+    procedure Completed(Sender: TObject);
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(AHgHistoryItem: THgHistoryItem; AnnotationCompletion: IOTAAnnotationCompletion);
+  end;
+
+{ THgBlameThread }
+
+procedure THgBlameThread.Completed(Sender: TObject);
+begin
+  FAnnotationCompletion.AnnotationComplete(THgAnnotationLineProvider.Create(FHgHistoryItem));
+end;
+
+constructor THgBlameThread.Create(AHgHistoryItem: THgHistoryItem; AnnotationCompletion: IOTAAnnotationCompletion);
+begin
+  FHgHistoryItem := AHgHistoryItem;
+  FAnnotationCompletion := AnnotationCompletion;
+  FreeOnTerminate := True;
+  inherited Create;
+  OnTerminate := Completed;
+end;
+
+procedure THgBlameThread.Execute;
+begin
+  NameThreadForDebugging('VerIns Hg Blame Updater');
+  FHgHistoryItem.LoadBlame;
+end;
+
+procedure THgFileHistory.StartAsynchronousUpdate(const FileName: string;
+  FileHistoryIndex: Integer;
+  const AnnotationCompletion: IOTAAnnotationCompletion);
+begin
+  if (FileHistoryIndex >= 0) and (FileHistoryIndex < FItem.HistoryCount) then
+    THgBlameThread.Create(FItem.HistoryItems[FileHistoryIndex], AnnotationCompletion)
+  else
+    AnnotationCompletion.AnnotationComplete(nil);
 end;
 
 initialization
