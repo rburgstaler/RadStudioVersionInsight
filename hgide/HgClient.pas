@@ -38,12 +38,13 @@ type
     FAuthor: string;
     FAuthorEmail: string;
     FBlameItems: TObjectList<THgBlameItem>;
-    FBody: string;
+    FChangedFiles: TStringList;
     FDate: TDateTime;
     FChangeSet: string;
     FChangeSetID: Integer;
-    FSubject: string;
+    FDescription: string;
     FParent: THgItem;
+    FSummary: string;
     function GetBlameCount: Integer;
     function GetBlameItems(AIndex: Integer): THgBlameItem;
   public
@@ -55,12 +56,13 @@ type
     property AuthorEmail: string read FAuthorEmail;
     property BlameCount: Integer read GetBlameCount;
     property BlameItems[AIndex: Integer]: THgBlameItem read GetBlameItems;
-    property Body: string read FBody;
+    property ChangedFiles: TStringList read FChangedFiles;
     property Date: TDateTime read FDate;
     property ChangeSet: string read FChangeSet;
     property ChangeSetID: Integer read FChangeSetID;
     property Parent: THgItem read FParent;
-    property Subject: string read FSubject;
+    property Description: string read FDescription;
+    property Summary: string read FSummary;
   end;
 
   THgBlameItem = class(TObject)
@@ -84,6 +86,10 @@ type
     FHgClient: THgClient;
     FHistoryItems: TObjectList<THgHistoryItem>;
     FStatus: THgStatus;
+    FLogLimit: Integer;
+    FLogFirstRev: Integer;
+    FLogLastRev: Integer;
+    FIncludeChangedFiles: Boolean;
     function GetHistoryCount: Integer;
     function GetHistoryItems(AIndex: Integer): THgHistoryItem;
   public
@@ -93,6 +99,10 @@ type
     procedure LoadStatus;
     property HistoryCount: Integer read GetHistoryCount;
     property HistoryItems[AIndex: Integer]: THgHistoryItem read GetHistoryItems;
+    property IncludeChangedFiles: Boolean read FIncludeChangedFiles write FIncludeChangedFiles;
+    property LogLimit: Integer read FLogLimit write FLogLimit;
+    property LogFirstRev: Integer read FLogFirstRev write FLogFirstRev;
+    property LogLastRev: Integer read FLogLastRev write FLogLastRev;
     property Status: THgStatus read FStatus;
   end;
 
@@ -106,6 +116,9 @@ type
   end;
 
 implementation
+
+uses
+  SHFolder;
 
 //--- JclBase and JclSysUtils --------------------------------------------------
 const
@@ -339,6 +352,51 @@ end;
 
 //------------------------------------------------------------------------------
 
+const
+  map_cmdline_verins =
+    'header = ''''' + #13#10 +
+    'header_verbose = ''''' + #13#10 +
+    'changeset = ''changeset:   {rev}:{node|short}\nuser:        {author|person}\nuser email:  <{author|email}>\ndate:        {date|date}\ndesc:        \n{desc}\n\n''' + #13#10 +
+    'changeset_quiet = ''\t* {desc|firstline|fill68|tabindent|strip}\n\n''' + #13#10 +
+    'changeset_verbose = ''changeset:   {rev}:{node|short}\nuser:        {author|person}\nuser email:  <{author|email}>\ndate:        {date|date}\ndesc:        \n{desc}\nfiles:       \n{file_adds}{file_dels}{files}\n''' + #13#10 +
+    'start_tags = '' [''' + #13#10 +
+    'tag = ''{tag}, ''' + #13#10 +
+    'last_tag = ''{tag}]''' + #13#10 +
+    'start_branches = '' <''' + #13#10 +
+    'branch = ''{branch}, ''' + #13#10 +
+    'last_branch = ''{branch}>''' + #13#10 +
+    'file = ''M {file}\n''' + #13#10 +
+    'last_file = ''M {file}\n''' + #13#10 +
+    'file_add = ''A {file_add}\n''' + #13#10 +
+    'last_file_add = ''A {file_add}\n''' + #13#10 +
+    'file_del = ''D {file_del}\n''' + #13#10 +
+    'last_file_del = ''D {file_del}\n '''
+    ;
+
+function GetMapCmdlineVerInsFileName: string;
+var
+  LStr: array [0..MAX_PATH] of Char;
+  SL: TStringList;
+begin
+  Result := '';
+  SetLastError(ERROR_SUCCESS);
+  if SHGetFolderPath(0, CSIDL_COMMON_APPDATA, 0, 0, @LStr) = S_OK then
+  begin
+    Result := LStr + '\VerIns\map-cmdline.verins';
+    if not FileExists(Result) then
+    begin
+      ForceDirectories(ExtractFilePath(Result));
+      SL := TStringList.Create;
+      try
+        SL.Text := map_cmdline_verins;
+        SL.SaveToFile(Result);
+      finally
+        SL.Free;
+      end;
+    end;
+  end;
+end;
+
 { THgHistoryItem }
 
 constructor THgHistoryItem.Create(AParent: THgItem);
@@ -346,10 +404,12 @@ begin
   inherited Create;
   FParent := AParent;
   FBlameItems := TObjectList<THgBlameItem>.Create;
+  FChangedFiles := TStringList.Create;
 end;
 
 destructor THgHistoryItem.Destroy;
 begin
+  FChangedFiles.Free;
   FBlameItems.Free;
   inherited Destroy;
 end;
@@ -447,6 +507,10 @@ begin
   FHistoryItems := TObjectList<THgHistoryItem>.Create;
   FFileName := AFileName;
   FStatus := gsUnknown;
+  FLogLimit := -1;
+  FLogFirstRev := -1;
+  FLogLastRev := -1;
+  FIncludeChangedFiles := False;
 end;
 
 destructor THgItem.Destroy;
@@ -510,12 +574,26 @@ var
   OutputStrings: TStringList;
   HistoryItem: THgHistoryItem;
   S, CurrentDir: string;
+  StyleFileName: string;
+  UseStyleFile: Boolean;
 begin
+  StyleFileName := GetMapCmdlineVerInsFileName;
+  UseStyleFile := (StyleFileName <> '') and FileExists(StyleFileName);
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(FFileName));
     CmdLine := FHgClient.HgExecutable + ' log ';
+    if FLogFirstRev > 0 then
+      CmdLine := CmdLine + Format(' -r%d:%d', [FLogFirstRev, FLogFirstRev - FLogLimit + 1]);
+    if FLogLimit > 0 then
+      CmdLine := CmdLine + Format(' -l %d', [FLogLimit]);
     CmdLine := CmdLine + ExtractFileName(FFileName);
+    if UseStyleFile then
+    begin
+      CmdLine := CmdLine + Format(' --style=%s', [StyleFileName]);
+      if FIncludeChangedFiles then
+        CmdLine := CmdLine + ' -v';
+    end;
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -545,24 +623,72 @@ begin
               HistoryItem.FChangeSet := Copy(S, P + 1, Length(S) - P);
               HistoryItem.FChangeSetID := StrToIntDef(Copy(S, 1, P - 1), -1);
             end;
-          end;
+          end
+          else
           if Pos('date:', S) = 1 then
           begin
             Delete(S, 1, 5);
             S := Trim(S);
             HistoryItem.FDate := ConvertDate(S);
-          end;
+          end
+          else
           if Pos('user:', S) = 1 then
           begin
             Delete(S, 1, 5);
             S := Trim(S);
             HistoryItem.FAuthor := S;
-          end;
+          end
+          else
+          if Pos('user email:', S) = 1 then
+          begin
+            Delete(S, 1, 11);
+            S := Trim(S);
+            HistoryItem.FAuthorEmail := S;
+          end
+          else
           if Pos('summary:', S) = 1 then
           begin
             Delete(S, 1, 8);
             S := Trim(S);
-            HistoryItem.FSubject := S;
+            HistoryItem.FSummary := S;
+            HistoryItem.FDescription := S;
+          end
+          else
+          if Pos('desc:', S) = 1 then
+          begin
+            Inc(I);
+            S := '';
+            while (I < OutputStrings.Count) and (Pos('files:', OutputStrings[I]) = 0) and
+              (Pos('changeset:', OutputStrings[I]) = 0) do
+            begin
+              S := S + OutputStrings[I] + #13#10;
+              Inc(I);
+            end;
+            if (Pos('files:', OutputStrings[I]) = 1) or (Pos('changeset:', OutputStrings[I]) = 1) then
+              Dec(I);
+            S := Trim(S);
+            if Pos(#13, S) > 0 then
+              HistoryItem.FSummary := Copy(S, 1, Pos(#13, S) - 1)
+            else
+              HistoryItem.FSummary := S;
+            HistoryItem.FDescription := S;
+          end
+          else
+          if Pos('files:', S) = 1 then
+          begin
+            Inc(I);
+            while (I < OutputStrings.Count) and (Pos('changeset:', OutputStrings[I]) = 0) do
+            begin
+              S := OutputStrings[I];
+              if (Length(S) > 2) and CharInSet(S[1], ['M', 'A', 'D']) and (S[2] = ' ') then
+              begin
+                Delete(S, 2, 1);
+                HistoryItem.FChangedFiles.Add(S);
+              end;
+              Inc(I);
+            end;
+            if Pos('changeset:', OutputStrings[I]) = 1 then
+              Dec(I);
           end;
         end;
         Inc(I);

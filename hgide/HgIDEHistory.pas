@@ -323,8 +323,7 @@ end;
 
 function THgFileHistory.GetComment(Index: Integer): WideString;
 begin
-  Result := THgHistoryItem(FItem.HistoryItems[Index]).Subject + #13#10 +
-    THgHistoryItem(FItem.HistoryItems[Index]).Body;
+  Result := THgHistoryItem(FItem.HistoryItems[Index]).Description;
 end;
 
 function THgFileHistory.GetContent(Index: Integer): IStream;
@@ -347,7 +346,7 @@ begin
   Item := THgHistoryItem(FItem.HistoryItems[Index]);
   Result := SAuthor + Item.Author + sLineBreak +
     STime + DateTimeToStr(Item.Date) + sLineBreak +
-    SComment + Item.Subject;
+    SComment + Item.Summary;
 end;
 
 function THgFileHistory.GetHistoryStyle(Index: Integer): TOTAHistoryStyle;
@@ -456,7 +455,7 @@ begin
     Item := FHgHistoryItem.BlameItems[Index].HistoryItem;
     Result := SAuthor + Item.Author + sLineBreak +
       STime + DateTimeToStr(Item.Date) + sLineBreak +
-      SComment + Item.Subject;
+      SComment + Item.Summary;
   end;
 end;
 
