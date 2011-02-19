@@ -52,6 +52,7 @@ type
     destructor Destroy; override;
     function GetFile: TBytes;
     procedure LoadBlame;
+    procedure LoadChangedFiles;
     property Author: string read FAuthor;
     property AuthorEmail: string read FAuthorEmail;
     property BlameCount: Integer read GetBlameCount;
@@ -80,8 +81,16 @@ type
 
   THgClient = class;
 
+  IHgAsyncUpdate = interface
+    ['{69F4D3BC-07A0-4AAA-AA60-88DBF5668A23}']
+    procedure UpdateHistoryItems(HgItem: THgItem; FirstNewIndex, LastNewIndex: Integer;
+      ForceUpdate: Boolean);
+    procedure Completed;
+  end;
+
   THgItem = class(TObject)
   private
+    FAsyncUpdate: IHgAsyncUpdate;
     FFileName: string;
     FHgClient: THgClient;
     FHistoryItems: TObjectList<THgHistoryItem>;
@@ -95,8 +104,10 @@ type
   public
     constructor Create(AHgClient: THgClient; const AFileName: string);
     destructor Destroy; override;
+    procedure AsyncReloadHistory;
     procedure LoadHistory(AOnlyLast: Boolean = False);
     procedure LoadStatus;
+    property AsyncUpdate: IHgAsyncUpdate read FAsyncUpdate write FAsyncUpdate;
     property HistoryCount: Integer read GetHistoryCount;
     property HistoryItems[AIndex: Integer]: THgHistoryItem read GetHistoryItems;
     property IncludeChangedFiles: Boolean read FIncludeChangedFiles write FIncludeChangedFiles;
@@ -111,7 +122,9 @@ type
     FHgExecutable: string;
   public
     constructor Create;
+    function FindRepositoryRoot(const APath: string): string;
     function IsVersioned(const AFileName: string): Boolean;
+    procedure SaveFileContentToStream(const AFileName: string; ARevision: Integer; OutputStream: TStream);
     property HgExecutable: string read FHgExecutable write FHgExecutable;
   end;
 
@@ -437,8 +450,8 @@ begin
     CmdLine := FParent.FHgClient.HgExecutable + ' cat -r ' + FChangeSet + ' ' + FParent.FFileName;
     Res := Execute(CmdLine, Output);
     FileContent := Output;
-    SetLength(Result,  Length(FileContent));
-    Move(FileContent[1], Result[0],  Length(FileContent));
+    SetLength(Result, Length(FileContent));
+    Move(FileContent[1], Result[0], Length(FileContent));
   finally
     SetCurrentDir(CurrentDir);
   end;
@@ -498,6 +511,89 @@ begin
   end;
 end;
 
+procedure THgHistoryItem.LoadChangedFiles;
+var
+  I, J, P, ID, Idx, Res: Integer;
+  CmdLine, Output: string;
+  OutputStrings: TStringList;
+  BlameItem: THgBlameItem;
+  S, {S2, }CurrentDir, Hash: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(FParent.FFileName));
+    CmdLine := FParent.FHgClient.HgExecutable + Format(' st --rev %d --rev %d -m -a -r', [FChangeSetID - 1, FChangeSetID]);
+    CmdLine := CmdLine + ExtractFileName(FParent.FFileName);
+    Res := Execute(CmdLine, Output);
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+  FChangedFiles.Clear;
+  if Res = 0 then
+  begin
+    OutputStrings := TStringList.Create;
+    try
+      OutputStrings.Text := Output;
+      for I := 0 to OutputStrings.Count - 1 do
+      begin
+        S := OutputStrings[I];
+        if (Length(S) > 2) and CharInSet(S[1], ['M', 'A', 'R']) and (S[2] = ' ') then
+        begin
+          Delete(S, 2, 1);
+          if S[1] = 'R' then
+            S[1] := 'D';
+          FChangedFiles.Add(S);
+        end;
+      end;
+    finally
+      OutputStrings.Free;
+    end;
+  end;
+end;
+
+type
+  THgHistoryThread = class(TThread)
+  private
+    FAsyncUpdate: IHgAsyncUpdate;
+    FHgItem: THgItem;
+    FLastAdded: Integer;
+  protected
+    procedure Completed(Sender: TObject);
+    procedure Execute; override;
+  public
+    constructor Create(AHgItem: THgItem; AsyncUpdate: IHgAsyncUpdate);
+  end;
+
+{ THgHistoryThread }
+
+procedure THgHistoryThread.Completed(Sender: TObject);
+begin
+  if (FLastAdded = 0) and (FHgItem.HistoryCount > 0) then
+  begin
+    FAsyncUpdate.UpdateHistoryItems(FHgItem, FLastAdded, 0, False);
+    Inc(FLastAdded);
+  end;
+  FAsyncUpdate.UpdateHistoryItems(FHgItem, FLastAdded, FHgItem.HistoryCount - 1, True);
+  FLastAdded := FHgItem.HistoryCount;
+  FAsyncUpdate.Completed;
+end;
+
+constructor THgHistoryThread.Create(AHgItem: THgItem; AsyncUpdate: IHgAsyncUpdate);
+begin
+  inherited Create(False);
+  FHgItem := AHgItem;
+  FreeOnTerminate := True;
+  FAsyncUpdate := AsyncUpdate;
+  FLastAdded := 0;
+  OnTerminate := Completed;
+end;
+
+procedure THgHistoryThread.Execute;
+begin
+  NameThreadForDebugging('VerIns Hg History Updater');
+  FHgItem.LoadHistory;
+end;
+
 { THgItem }
 
 constructor THgItem.Create(AHgClient: THgClient; const AFileName: string);
@@ -517,6 +613,12 @@ destructor THgItem.Destroy;
 begin
   FHistoryItems.Free;
   inherited Destroy;
+end;
+
+procedure THgItem.AsyncReloadHistory;
+begin
+  FHistoryItems.Clear;
+  THgHistoryThread.Create(Self, FASyncUpdate);
 end;
 
 function THgItem.GetHistoryCount: Integer;
@@ -587,7 +689,10 @@ begin
       CmdLine := CmdLine + Format(' -r%d:%d', [FLogFirstRev, FLogFirstRev - FLogLimit + 1]);
     if FLogLimit > 0 then
       CmdLine := CmdLine + Format(' -l %d', [FLogLimit]);
-    CmdLine := CmdLine + ExtractFileName(FFileName);
+    if ExtractFileName(FFileName) <> '' then
+      CmdLine := CmdLine + ' ' + ExtractFileName(FFileName)
+    else
+      CmdLine := CmdLine + ' ' + FFileName;
     if UseStyleFile then
     begin
       CmdLine := CmdLine + Format(' --style=%s', [StyleFileName]);
@@ -664,7 +769,8 @@ begin
               S := S + OutputStrings[I] + #13#10;
               Inc(I);
             end;
-            if (Pos('files:', OutputStrings[I]) = 1) or (Pos('changeset:', OutputStrings[I]) = 1) then
+            if (I < OutputStrings.Count) and
+              ((Pos('files:', OutputStrings[I]) = 1) or (Pos('changeset:', OutputStrings[I]) = 1)) then
               Dec(I);
             S := Trim(S);
             if Pos(#13, S) > 0 then
@@ -687,7 +793,7 @@ begin
               end;
               Inc(I);
             end;
-            if Pos('changeset:', OutputStrings[I]) = 1 then
+            if (I < OutputStrings.Count) and (Pos('changeset:', OutputStrings[I]) = 1) then
               Dec(I);
           end;
         end;
@@ -712,6 +818,26 @@ begin
   //FHgExecutable := 'hg.exe';
 end;
 
+function THgClient.FindRepositoryRoot(const APath: string): string;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(APath);
+    CmdLine := FHgExecutable + ' root';
+    Res := Execute(CmdLine, Output);
+    if Res = 0 then
+      Result := Trim(Output)
+    else
+      Result := '';
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
 function THgClient.IsVersioned(const AFileName: string): Boolean;
 var
   Res: Integer;
@@ -724,6 +850,27 @@ begin
     CmdLine := FHgExecutable + ' status ' + ExtractFileName(AFileName);
     Res := Execute(CmdLine, Output);
     Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+procedure THgClient.SaveFileContentToStream(const AFileName: string;
+  ARevision: Integer; OutputStream: TStream);
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+  FileContent: AnsiString;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(AFileName));
+    CmdLine := HgExecutable + ' cat -r ' + IntToStr(ARevision) + ' ' + AFileName;
+    Res := Execute(CmdLine, Output);
+    FileContent := Output;
+    if Length(FileContent) > 0 then
+      OutputStream.Write(FileContent[1], Length(FileContent));
   finally
     SetCurrentDir(CurrentDir);
   end;

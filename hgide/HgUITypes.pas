@@ -11,36 +11,35 @@
 { WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for }
 { the specific language governing rights and limitations under the License.    }
 {                                                                              }
-{ The Original Code is HgIDEConst.pas.                                         }
+{ The Original Code is delphisvn: Subversion plugin for CodeGear Delphi.       }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2011 Uwe Schuster. All      }
-{ Rights Reserved.                                                             }
+{                                                                              }
+{ Portions created or modified by Embarcadero Technologies are                 }
+{ Copyright © 2010 Embarcadero Technologies, Inc. All Rights Reserved          }
+{ Modifications include a major re-write of delphisvn. New functionality for   }
+{ diffing, international character support, asynchronous gathering of data,    }
+{ check-out and import, usability, tighter integration into RAD Studio, and    }
+{ other new features.  Most original source files not used or re-written.      }
 {                                                                              }
 { Contributors:                                                                }
+{ Ondrej Kelle (tondrej)                                                       }
 { Uwe Schuster (uschuster)                                                     }
+{ Embarcadero Technologies                                                     }
 {                                                                              }
 {******************************************************************************}
-
-unit HgIDEConst;
+unit HgUITypes;
 
 interface
 
-resourcestring
-  sMercurial = 'Mercurial';
-  sPMMHgParent = 'Mercurial';
-  sPMMLog = 'Show Log';
-  sPMMRootDir = 'From Repository Root';
-  sPMMProjectDir = 'From Project Directory';
+type
+  TSvnEditAction = (seaUndo, seaRedo, seaCut, seaCopy, seaPaste, seaDelete, seaSelectAll,
+    seaUnknown);
 
-  sLog = 'Log';
+  TSvnEditStates = (sesCanUndo, sesCanRedo, sesCanCut, sesCanCopy, sesCanPaste,
+    sesCanDelete, sesCanSelectAll);
 
-  SAuthor = 'Author: ';
-  STime = 'Time: ';
-  SComment = 'Comment: ';
-
-  sRetrievingFileRevision = 'Retrieving %s revision %d';
-  sSavingFileRevision = 'Saving %s revision %d';
+  TSvnEditState = set of TSvnEditStates;
 
 implementation
 

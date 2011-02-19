@@ -35,6 +35,15 @@ contains
   HgIDEHistory in 'HgIDEHistory.pas',
   HgAddInOptionsFrame in 'HgAddInOptionsFrame.pas' {frmHgTestsOptions: TFrame},
   HgIDEAddInOptions in 'HgIDEAddInOptions.pas',
-  HgIDEConst in 'HgIDEConst.pas';
+  HgIDEConst in 'HgIDEConst.pas',
+  HgIDEMenus in 'HgIDEMenus.pas',
+  HgIDETypes in 'HgIDETypes.pas',
+  HgIDEUtils in 'HgIDEUtils.pas',
+  HgUIConst in 'HgUIConst.pas',
+  HgUITypes in 'HgUITypes.pas',
+  HgUIUtils in 'HgUIUtils.pas',
+  HgClientProgress in 'HgClientProgress.pas' {SvnProgressDialog},
+  HgIDELog in 'HgIDELog.pas',
+  HgClientLog in 'HgClientLog.pas' {SvnLogFrame: TFrame};
 
 end.

@@ -53,11 +53,12 @@ var
 implementation
 
 uses
-  Registry, ToolsAPI, FileHistoryAPI, HgIDEHistory, HgIDEAddInOptions;
+  Registry, ToolsAPI, FileHistoryAPI, HgIDEHistory, HgIDEAddInOptions, HgIDEMenus;
 
 procedure Register;
 begin
   IDEClient := THgIDEClient.Create;
+  RegisterMenus(IDEClient);
   RegisterAddInOptions;
 end;
 

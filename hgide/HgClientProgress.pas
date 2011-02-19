@@ -11,10 +11,10 @@
 { WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for }
 { the specific language governing rights and limitations under the License.    }
 {                                                                              }
-{ The Original Code is HgIDEConst.pas.                                         }
+{ The Original Code is SvnClientProgress.pas.                                  }
 {                                                                              }
 { The Initial Developer of the Original Code is Uwe Schuster.                  }
-{ Portions created by Uwe Schuster are Copyright © 2011 Uwe Schuster. All      }
+{ Portions created by Uwe Schuster are Copyright © 2010 Uwe Schuster. All      }
 { Rights Reserved.                                                             }
 {                                                                              }
 { Contributors:                                                                }
@@ -22,26 +22,46 @@
 {                                                                              }
 {******************************************************************************}
 
-unit HgIDEConst;
+unit HgClientProgress;
 
 interface
 
-resourcestring
-  sMercurial = 'Mercurial';
-  sPMMHgParent = 'Mercurial';
-  sPMMLog = 'Show Log';
-  sPMMRootDir = 'From Repository Root';
-  sPMMProjectDir = 'From Project Directory';
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ComCtrls;
 
-  sLog = 'Log';
+type
+  TAbortCallBack = procedure of object;
 
-  SAuthor = 'Author: ';
-  STime = 'Time: ';
-  SComment = 'Comment: ';
+  TSvnProgressDialog = class(TForm)
+    btnAbort: TButton;
+    ProgressBar1: TProgressBar;
+    lbInfo: TLabel;
+    procedure btnAbortClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    { Private declarations }
+    FAbortCallBack: TAbortCallBack;
+  public
+    { Public declarations }
+    property AbortCallBack: TAbortCallBack read FAbortCallBack write FAbortCallBack;
+  end;
 
-  sRetrievingFileRevision = 'Retrieving %s revision %d';
-  sSavingFileRevision = 'Saving %s revision %d';
+var
+  SvnProgressDialog: TSvnProgressDialog;
 
 implementation
+
+{$R *.dfm}
+
+procedure TSvnProgressDialog.btnAbortClick(Sender: TObject);
+begin
+  FAbortCallBack;
+end;
+
+procedure TSvnProgressDialog.FormCreate(Sender: TObject);
+begin
+  lbInfo.Caption := '';
+end;
 
 end.
