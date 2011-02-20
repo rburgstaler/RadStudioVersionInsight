@@ -410,6 +410,11 @@ begin
   end;
 end;
 
+function QuoteFileName(const FileName: string): string;
+begin
+  Result := '"' + FileName + '"';
+end;
+
 { THgHistoryItem }
 
 constructor THgHistoryItem.Create(AParent: THgItem);
@@ -447,7 +452,7 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(FParent.FFileName));
-    CmdLine := FParent.FHgClient.HgExecutable + ' cat -r ' + FChangeSet + ' ' + FParent.FFileName;
+    CmdLine := FParent.FHgClient.HgExecutable + ' cat -r ' + FChangeSet + ' ' + QuoteFileName(FParent.FFileName);
     Res := Execute(CmdLine, Output);
     FileContent := Output;
     SetLength(Result, Length(FileContent));
@@ -469,7 +474,7 @@ begin
   try
     SetCurrentDir(ExtractFilePath(FParent.FFileName));
     CmdLine := FParent.FHgClient.HgExecutable + Format(' annotate -r %d ', [FChangeSetID]);
-    CmdLine := CmdLine + ExtractFileName(FParent.FFileName);
+    CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -523,7 +528,7 @@ begin
   try
     SetCurrentDir(ExtractFilePath(FParent.FFileName));
     CmdLine := FParent.FHgClient.HgExecutable + Format(' st --rev %d --rev %d -m -a -r', [FChangeSetID - 1, FChangeSetID]);
-    CmdLine := CmdLine + ExtractFileName(FParent.FFileName);
+    CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -690,12 +695,12 @@ begin
     if FLogLimit > 0 then
       CmdLine := CmdLine + Format(' -l %d', [FLogLimit]);
     if ExtractFileName(FFileName) <> '' then
-      CmdLine := CmdLine + ' ' + ExtractFileName(FFileName)
+      CmdLine := CmdLine + ' ' + QuoteFileName(ExtractFileName(FFileName))
     else
-      CmdLine := CmdLine + ' ' + FFileName;
+      CmdLine := CmdLine + ' ' + QuoteFileName(ExcludeTrailingPathDelimiter(FFileName));
     if UseStyleFile then
     begin
-      CmdLine := CmdLine + Format(' --style=%s', [StyleFileName]);
+      CmdLine := CmdLine + Format(' --style=%s', [QuoteFileName(StyleFileName)]);
       if FIncludeChangedFiles then
         CmdLine := CmdLine + ' -v';
     end;
@@ -847,7 +852,7 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FHgExecutable + ' status ' + ExtractFileName(AFileName);
+    CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
     Res := Execute(CmdLine, Output);
     Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
   finally
@@ -866,7 +871,7 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := HgExecutable + ' cat -r ' + IntToStr(ARevision) + ' ' + AFileName;
+    CmdLine := HgExecutable + ' cat -r ' + IntToStr(ARevision) + ' ' + QuoteFileName(AFileName);
     Res := Execute(CmdLine, Output);
     FileContent := Output;
     if Length(FileContent) > 0 then
