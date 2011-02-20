@@ -27,7 +27,8 @@ package HgIDE;
 
 requires
   rtl,
-  designide;
+  designide,
+  vclimg;
 
 contains
   HgClient in 'HgClient.pas',
@@ -44,6 +45,12 @@ contains
   HgUIUtils in 'HgUIUtils.pas',
   HgClientProgress in 'HgClientProgress.pas' {SvnProgressDialog},
   HgIDELog in 'HgIDELog.pas',
-  HgClientLog in 'HgClientLog.pas' {SvnLogFrame: TFrame};
+  HgClientLog in 'HgClientLog.pas' {SvnLogFrame: TFrame},
+  HgClientRecentComments in 'HgClientRecentComments.pas' {RecentCommentsDialog},
+  HgImages in 'HgImages.pas' {HgImageModule: TDataModule},
+  HgTree in 'HgTree.pas',
+  HgClientCommitFrame in 'HgClientCommitFrame.pas' {SvnCommitFrame: TFrame},
+  HgIDECommit in 'HgIDECommit.pas',
+  HgIDEMessageView in 'HgIDEMessageView.pas';
 
 end.

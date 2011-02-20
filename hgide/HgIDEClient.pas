@@ -27,7 +27,7 @@ unit HgIDEClient;
 interface
 
 uses
-  HgClient;
+  SysUtils, HgClient;
 
 type
   THgIDEClient = class(TObject)
@@ -47,13 +47,16 @@ type
 
 procedure Register;
 
+function BaseRegKey: string;
+
 var
   IDEClient: THgIDEClient;
 
 implementation
 
 uses
-  Registry, ToolsAPI, FileHistoryAPI, HgIDEHistory, HgIDEAddInOptions, HgIDEMenus;
+  Registry, ToolsAPI, FileHistoryAPI, HgIDEHistory, HgIDEAddInOptions, HgIDEMenus,
+  HgImages, HgIDEConst;
 
 procedure Register;
 begin
@@ -85,6 +88,7 @@ begin
   then
     FileHistoryManager.UnregisterHistoryProvider(FHistoryProviderIndex);
   FHistoryProviderIndex := -1;
+  FreeAndNil(HgImageModule);
 end;
 
 function THgIDEClient.GetHgClient: THgClient;
@@ -103,6 +107,8 @@ begin
   if FHgInitialized then
     Exit;
   FHgInitialized := True;
+
+  HgImageModule := THgImageModule.Create(nil);
 
   FHgClient := THgClient.Create;
 
@@ -124,6 +130,11 @@ begin
     if BorlandIDEServices.GetService(IOTAFileHistoryManager, FileHistoryManager) then
       FHistoryProviderIndex := FileHistoryManager.RegisterHistoryProvider(THgFileHistoryProvider.Create(Self));
   end;
+end;
+
+function BaseRegKey: string;
+begin
+  Result := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\' + sMercurial + '\';
 end;
 
 end.

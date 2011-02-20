@@ -29,16 +29,22 @@ interface
 resourcestring
   sMercurial = 'Mercurial';
   sPMMHgParent = 'Mercurial';
+  sPMMCommit = 'Commit';
   sPMMLog = 'Show Log';
   sPMMRootDir = 'From Repository Root';
   sPMMProjectDir = 'From Project Directory';
+  sPMMExpicitFiles = 'Files in this Project';
 
+  sCommit = 'Commit';
+  sCommitCompleted = 'Commit completed at revision: %d';
   sLog = 'Log';
+  sWorking = '-Working';
 
   SAuthor = 'Author: ';
   STime = 'Time: ';
   SComment = 'Comment: ';
 
+  sCommitLoaded = 'An existing commit window was open. Please close it if you wish to start a new commit.';
   sRetrievingFileRevision = 'Retrieving %s revision %d';
   sSavingFileRevision = 'Saving %s revision %d';
 

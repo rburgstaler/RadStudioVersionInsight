@@ -77,7 +77,7 @@ type
     property HistoryItem: THgHistoryItem read FHistoryItem write FHistoryItem;
   end;
 
-  THgStatus = (gsAdded, gsModified, gsNormal, gsUnknown);
+  THgStatus = (gsAdded, gsModified, gsNormal, gsUnknown, gsUnversioned, gsMissing, gsDeleted);
 
   THgClient = class;
 
@@ -101,13 +101,17 @@ type
     FIncludeChangedFiles: Boolean;
     function GetHistoryCount: Integer;
     function GetHistoryItems(AIndex: Integer): THgHistoryItem;
+    function GetBaseChangeSetID: Integer;
   public
     constructor Create(AHgClient: THgClient; const AFileName: string);
     destructor Destroy; override;
     procedure AsyncReloadHistory;
+    function GetBaseFile: TBytes;
     procedure LoadHistory(AOnlyLast: Boolean = False);
     procedure LoadStatus;
     property AsyncUpdate: IHgAsyncUpdate read FAsyncUpdate write FAsyncUpdate;
+    property BaseChangeSetID: Integer read GetBaseChangeSetID;
+    property FileName: string read FFileName;
     property HistoryCount: Integer read GetHistoryCount;
     property HistoryItems[AIndex: Integer]: THgHistoryItem read GetHistoryItems;
     property IncludeChangedFiles: Boolean read FIncludeChangedFiles write FIncludeChangedFiles;
@@ -117,15 +121,25 @@ type
     property Status: THgStatus read FStatus;
   end;
 
+  THgStatusCallback = procedure(Sender: TObject; Item: THgItem; var Cancel: Boolean) of object;
+
+  THgError = (hgeSuccess, hgeEmptyCommitMessage, hgeNoUsernameSupplied, hgeUnknown);
+
   THgClient = class(TObject)
   private
     FHgExecutable: string;
+    FLastCommitInfoChangeSetID: Integer;
   public
     constructor Create;
+    function Add(const AFileName: string): Boolean;
+    function Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): THgError;
     function FindRepositoryRoot(const APath: string): string;
+    function GetModifications(const APath: string; ACallBack: THgStatusCallback): Boolean;
     function IsVersioned(const AFileName: string): Boolean;
+    function Revert(const AFileName: string): Boolean;
     procedure SaveFileContentToStream(const AFileName: string; ARevision: Integer; OutputStream: TStream);
     property HgExecutable: string read FHgExecutable write FHgExecutable;
+    property LastCommitInfoChangeSetID: Integer read FLastCommitInfoChangeSetID;
   end;
 
 implementation
@@ -626,6 +640,46 @@ begin
   THgHistoryThread.Create(Self, FASyncUpdate);
 end;
 
+function THgItem.GetBaseChangeSetID: Integer;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+  FileContent: AnsiString;
+begin
+  Result := -1;
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(FFileName));
+    CmdLine := FHgClient.HgExecutable + ' log -l 1 --template "{rev}" ' + QuoteFileName(FFileName);
+    Res := Execute(CmdLine, Output);
+    if (Res = 0) and (Trim(Output) <> '') then
+      Result := StrToIntDef(Output, -1);
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+function THgItem.GetBaseFile: TBytes;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+  FileContent: AnsiString;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(FFileName));
+    CmdLine := FHgClient.HgExecutable + ' cat ' + QuoteFileName(FFileName);
+    Res := Execute(CmdLine, Output);
+    FileContent := Output;
+    SetLength(Result, Length(FileContent));
+    Move(FileContent[1], Result[0], Length(FileContent));
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
 function THgItem.GetHistoryCount: Integer;
 begin
   Result := FHistoryItems.Count;
@@ -811,16 +865,130 @@ begin
 end;
 
 procedure THgItem.LoadStatus;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
 begin
-  FStatus := gsUnknown;
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(FFileName));
+    CmdLine := FHgClient.HgExecutable + ' status ' + QuoteFileName(FFileName);
+    Res := Execute(CmdLine, Output);
+    if Res = 0 then
+    begin
+      if Pos('A ' + ExtractFileName(FFileName), Output) > 0 then
+        FStatus := gsAdded
+      else
+      if Pos('M ' + ExtractFileName(FFileName), Output) > 0 then
+        FStatus := gsAdded
+      else
+      if Pos('R ' + ExtractFileName(FFileName), Output) > 0 then
+        FStatus := gsDeleted
+      else
+      if Pos('? ' + ExtractFileName(FFileName), Output) > 0 then
+        FStatus := gsUnversioned
+      else
+      if Pos('! ' + ExtractFileName(FFileName), Output) > 0 then
+        FStatus := gsMissing
+      else
+      if Trim(Output) = '' then
+        FStatus := gsNormal;
+    end
+    else
+      FStatus := gsUnknown;
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
 end;
 
 { THgClient }
+
+function THgClient.Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): THgError;
+var
+  I, P, Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  Result := hgeUnknown;
+  if AMessage = '' then
+    Result := hgeEmptyCommitMessage
+  else
+  if AFileList.Count > 0 then
+  begin
+    FLastCommitInfoChangeSetID := -1;
+    CurrentDir := GetCurrentDir;
+    try
+      SetCurrentDir(ExtractFilePath(AFileList[0]));
+      CmdLine := HgExecutable + ' commit -m "' + AMessage + '"';
+      if AUser <> '' then
+        CmdLine := CmdLine + ' -u "' + AUser + '"';
+      for I := 0 to AFileList.Count - 1 do
+        CmdLine := CmdLine + ' ' + QuoteFileName(AFileList[I]);
+      Res := Execute(CmdLine, Output);
+      if Res = 0 then
+      begin
+        if Pos('abort: empty commit message', Output) > 0 then
+          Result := hgeEmptyCommitMessage
+        else
+        if Pos('abort: no username supplied', Output) > 0 then
+          Result := hgeNoUsernameSupplied
+        else
+        if (Trim(Output) = '') or (Pos('abort:', Output) = 0) then
+        begin
+          Result := hgeSuccess;
+          CmdLine := HgExecutable + ' tip';
+          Res := Execute(CmdLine, Output);
+          if Res = 0 then
+          begin
+            P := Pos('changeset:   ', Output);
+            if P > 0 then
+            begin
+              Delete(Output, 1, P + 10);
+              P := Pos(':', Output);
+              if P > 0 then
+              begin
+                Delete(Output, P, Length(Output));
+                FLastCommitInfoChangeSetID := StrToIntDef(Trim(Output), -1);
+              end;
+            end;
+          end;
+        end;
+      end;
+    finally
+      SetCurrentDir(CurrentDir);
+    end;
+  end;
+end;
 
 constructor THgClient.Create;
 begin
   inherited Create;
   //FHgExecutable := 'hg.exe';
+  FLastCommitInfoChangeSetID := -1;
+end;
+
+function THgClient.Add(const AFileName: string): Boolean;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(AFileName));
+    CmdLine := FHgExecutable + ' add ' + QuoteFileName(AFileName);
+    Res := Execute(CmdLine, Output);
+    Result := (Res = 0) and (Trim(Output) = '');
+    if Result then
+    begin
+      CmdLine := FHgExecutable + ' status ' + QuoteFileName(AFileName);
+      Res := Execute(CmdLine, Output);
+      Result := (Res = 0) and (Pos('A ' + ExtractFileName(AFileName), Output) > 0);
+    end;
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
 end;
 
 function THgClient.FindRepositoryRoot(const APath: string): string;
@@ -843,6 +1011,68 @@ begin
   end;
 end;
 
+function THgClient.GetModifications(const APath: string; ACallBack: THgStatusCallback): Boolean;
+var
+  I, Res: Integer;
+  CmdLine, Output, S: string;
+  OutputStrings: TStringList;
+  CurrentDir: string;
+  HgItem: THgItem;
+  Cancel: Boolean;
+begin
+  Result := Assigned(ACallBack);
+  if Result then
+  begin
+    CurrentDir := GetCurrentDir;
+    try
+      SetCurrentDir(APath);
+      CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExcludeTrailingPathDelimiter(APath));
+      Res := Execute(CmdLine, Output);
+      Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
+      if Result then
+      begin
+        OutputStrings := TStringList.Create;
+        try
+          OutputStrings.Text := Output;
+          Cancel := False;
+          for I := 0 to OutputStrings.Count - 1 do
+          begin
+            S := OutputStrings[I];
+            if (Length(S) > 2) and (S[2] = ' ') then
+            begin
+              Assert((S[1] = 'M') or (S[1] = 'A') or (S[1] = 'R') or (S[1] = '?') or (S[1] = '!'));
+              HgItem := THgItem.Create(Self, IncludeTrailingPathDelimiter(APath) + Copy(S, 3, Length(S)));
+              if S[1] = 'M' then
+                HgItem.FStatus := gsModified
+              else
+              if S[1] = 'A' then
+                HgItem.FStatus := gsAdded
+              else
+              if S[1] = 'R' then
+                HgItem.FStatus := gsDeleted
+              else
+              if S[1] = '?' then
+                HgItem.FStatus := gsUnversioned
+              else
+              if S[1] = '!' then
+                HgItem.FStatus := gsMissing
+              else
+                HgItem.FStatus := gsUnknown;
+              ACallBack(Self, HgItem, Cancel);
+              if Cancel then
+                Break;
+            end;
+          end;
+        finally
+          OutputStrings.Free;
+        end;
+      end;
+    finally
+      SetCurrentDir(CurrentDir);
+    end;
+  end;
+end;
+
 function THgClient.IsVersioned(const AFileName: string): Boolean;
 var
   Res: Integer;
@@ -855,6 +1085,29 @@ begin
     CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
     Res := Execute(CmdLine, Output);
     Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+function THgClient.Revert(const AFileName: string): Boolean;
+var
+  Res: Integer;
+  CmdLine, Output: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    SetCurrentDir(ExtractFilePath(AFileName));
+    CmdLine := FHgExecutable + ' revert ' + QuoteFileName(AFileName);
+    Res := Execute(CmdLine, Output);
+    Result := (Res = 0) and (Trim(Output) = '');
+    if Result then
+    begin
+      CmdLine := FHgExecutable + ' status ' + QuoteFileName(AFileName);
+      Res := Execute(CmdLine, Output);
+      Result := (Res = 0) and ((Trim(Output) = '') or (Pos('? ' + AFileName, Output) > 0));
+    end;
   finally
     SetCurrentDir(CurrentDir);
   end;

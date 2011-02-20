@@ -130,7 +130,7 @@ function RootDirectory(const HgClient: THgClient; const Path: string): string;
 
 implementation
 
-uses SysUtils, HgIDEConst{, SvnIDECommit, SvnIDEUpdate, SvnIDEClean}, HgIDELog{,
+uses SysUtils, HgIDEConst, HgIDECommit{, SvnIDEUpdate, SvnIDEClean}, HgIDELog{,
   SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser};
 
 const
@@ -580,11 +580,11 @@ procedure RegisterMenus(AHgIDEClient: THgIDEClient);
 begin
   NotifierIndex := (BorlandIDEServices as IOTAVersionControlServices).AddNotifier(THgNotifier.Create(AHgIDEClient));
   PMMSvnParent := TParentHgMenu.Create;
+  PMMParentCommit := TParentCommitHgMenu.Create;
+  PMMRootDirCommit := TRootDirCommitHgMenu.Create(AHgIDEClient);
+  PMMProjectDirCommit := TProjectDirCommitHgMenu.Create(AHgIDEClient);
+  //PMMExpicitFilesCommit := TExpicitFilesCommitHgMenu.Create(AHgIDEClient);
   {//TODO:1
-  PMMParentCommit := TParentCommitSvnMenu.Create;
-  PMMRootDirCommit := TRootDirCommitSvnMenu.Create(ASvnIDEClient);
-  PMMProjectDirCommit := TProjectDirCommitSvnMenu.Create(ASvnIDEClient);
-  PMMExpicitFilesCommit := TExpicitFilesCommitSvnMenu.Create(ASvnIDEClient);
   PMMFileCommit := TFileCommitSvnMenu.Create(ASvnIDEClient);
   PMMParentUpdate := TParentUpdateSvnMenu.Create;
   PMMRootDirUpdate := TRootDirUpdateSvnMenu.Create(ASvnIDEClient);
