@@ -338,6 +338,11 @@ end;
 
 //------------------------------------------------------------------------------
 
+function QuoteFileName(const FileName: string): string;
+begin
+  Result := '"' + FileName + '"';
+end;
+
 { TGitHistoryItem }
 
 constructor TGitHistoryItem.Create(AParent: TGitItem);
@@ -374,10 +379,10 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(FParent.FFileName));
-    CmdLine := FParent.FGitClient.GitExecutable + ' ls-files ' + ExtractFileName(FParent.FFileName) + ' --full-name';
+    CmdLine := FParent.FGitClient.GitExecutable + ' ls-files ' + QuoteFileName(ExtractFileName(FParent.FFileName)) + ' --full-name';
     Res := Execute(CmdLine, Output);
     FullFileName := Trim(Output);
-    CmdLine := FParent.FGitClient.GitExecutable + ' show ' + FHash + ':' + FullFileName;
+    CmdLine := FParent.FGitClient.GitExecutable + ' show ' + FHash + ':' + QuoteFileName(FullFileName);
     Output := '';
     Res := Execute(CmdLine, Output);
     FileContent := Output;
@@ -400,7 +405,7 @@ begin
   try
     SetCurrentDir(ExtractFilePath(FParent.FFileName));
     CmdLine := FParent.FGitClient.GitExecutable + ' blame -l ' + FHash + ' ';
-    CmdLine := CmdLine + ExtractFileName(FParent.FFileName);
+    CmdLine := CmdLine + QuoteFileName(ExtractFileName(FParent.FFileName));
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -502,7 +507,7 @@ begin
     CmdLine := FGitClient.GitExecutable + ' log ';
     if AOnlyLast then
       CmdLine := CmdLine + '-1 ';
-    CmdLine := CmdLine + '--pretty=format:"H: %H%nAT: %at%nAN: %an%nAE: %ae%nS: %s%nB: %b" ' + ExtractFileName(FFileName);
+    CmdLine := CmdLine + '--pretty=format:"H: %H%nAT: %at%nAN: %an%nAE: %ae%nS: %s%nB: %b" ' + QuoteFileName(ExtractFileName(FFileName));
     Res := Execute(CmdLine, Output);
   finally
     SetCurrentDir(CurrentDir);
@@ -573,7 +578,7 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(FFileName));
-    CmdLine := FGitClient.GitExecutable + ' diff --name-status ' + ExtractFileName(FFileName);
+    CmdLine := FGitClient.GitExecutable + ' diff --name-status ' + QuoteFileName(ExtractFileName(FFileName));
     Res := Execute(CmdLine, Output);
     if (Res = 0) and (Pos('fatal: Not a git repository', Output) > 0) then
       Exit;
@@ -594,7 +599,7 @@ begin
 
     if FStatus = gsUnknown then
     begin
-      CmdLine := FGitClient.GitExecutable + ' diff --cached --name-only --diff-filter=A ' + ExtractFileName(FFileName);
+      CmdLine := FGitClient.GitExecutable + ' diff --cached --name-only --diff-filter=A ' + QuoteFileName(ExtractFileName(FFileName));
       Res := Execute(CmdLine, Output);
 
       if (Res = 0) and (Trim(Output) <> '') then
@@ -612,7 +617,7 @@ begin
 
     if FStatus = gsUnknown then
     begin
-      CmdLine := FGitClient.GitExecutable + ' ls-files -t ' + ExtractFileName(FFileName);
+      CmdLine := FGitClient.GitExecutable + ' ls-files -t ' + QuoteFileName(ExtractFileName(FFileName));
       Res := Execute(CmdLine, Output);
 
       if (Res = 0) and (Trim(Output) <> '') then
@@ -650,13 +655,13 @@ begin
   CurrentDir := GetCurrentDir;
   try
     SetCurrentDir(ExtractFilePath(AFileName));
-    CmdLine := FGitExecutable + ' log --max-count=1 ' + ExtractFileName(AFileName);
+    CmdLine := FGitExecutable + ' log --max-count=1 ' + QuoteFileName(ExtractFileName(AFileName));
     Res := Execute(CmdLine, Output);
     if (Res = 0) and (Pos('commit ', Output) = 1) then
       Result := True
     else
     begin
-      CmdLine := FGitExecutable + ' status ' + ExtractFileName(AFileName);
+      CmdLine := FGitExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
       Res := Execute(CmdLine, Output);
       Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
     end;
