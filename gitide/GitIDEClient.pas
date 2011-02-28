@@ -53,11 +53,12 @@ var
 implementation
 
 uses
-  Registry, ToolsAPI, FileHistoryAPI, GitIDEHistory, GitIDEAddInOptions;
+  Registry, ToolsAPI, FileHistoryAPI, GitIDEHistory, GitIDEAddInOptions, GitIDEMenus;
 
 procedure Register;
 begin
   IDEClient := TGitIDEClient.Create;
+  RegisterMenus(IDEClient);
   RegisterAddInOptions;
 end;
 

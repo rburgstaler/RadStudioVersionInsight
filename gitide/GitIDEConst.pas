@@ -27,6 +27,8 @@ unit GitIDEConst;
 interface
 
 resourcestring
+  sGit = 'Git';
+
   SAuthor = 'Author: ';
   STime = 'Time: ';
   SComment = 'Comment: ';
