@@ -2389,11 +2389,13 @@ type
     procedure DockFormRefresh(const EditWindow: INTAEditWindow; DockForm: TDockableForm);
   end;
 
+{$IFDEF DEBUGMESSAGES}
 function MsgServices: IOTAMessageServices;
 begin
   Result := (BorlandIDEServices as IOTAMessageServices);
   Assert(Result <> nil, 'IOTAMessageServices not available');
 end;
+{$ENDIF DEBUGMESSAGES}
 
 constructor TIdeNotifier.Create(AWizard: TLiveBlameWizard; AList: TList);
 begin
@@ -2420,10 +2422,12 @@ var
   InfoStr: string;
   Dummy: IUnknown;
 begin
+  {$IFDEF DEBUGMESSAGES}
   MsgServices.AddTitleMessage(Format('%s: %s',
     [GetEnumName(TypeInfo(TOTAFIleNotification), Ord(NotifyCode)), FileName]));
   MsgServices.AddToolMessage('',Format('%s: %s',
     [GetEnumName(TypeInfo(TOTAFIleNotification), Ord(NotifyCode)), FileName]), 'Notifier',0,0);
+  {$ENDIF DEBUGMESSAGES}
 
   if NotifyCode = ofnFileOpened then
   begin
@@ -2435,7 +2439,9 @@ begin
         if Assigned(Module) and SameText(Module.FileName, FileName) then
         begin
           Module.AddNotifier(TMyModuleNotifier.Create(Module, FWizard, FList, ' ModuleNotifier[' +  FileName + ']'));
+          {$IFDEF DEBUGMESSAGES}
           MsgServices.AddToolMessage('','FileNotification added Notifier', 'Notifier',0,0);
+          {$ENDIF DEBUGMESSAGES}
           for J := 0 to Pred(Module.GetModuleFileCount) do
           begin
             Editor := Module.GetModuleFileEditor(J);
@@ -2449,7 +2455,9 @@ begin
             if Supports(Editor, IOTATypeLibEditor, Dummy) then
               InfoStr := InfoStr + ', IOTATypeLibEditor';
             Editor.AddNotifier(TMyModuleNotifier.Create(Module, FWizard, FList, ' ModuleEditorNotifier[' +  InfoStr + ']'));
+            {$IFDEF DEBUGMESSAGES}
             MsgServices.AddToolMessage('','FileNotification added EditorNotifier', 'Notifier',0,0);
+            {$ENDIF DEBUGMESSAGES}
           end;
         end;
       end;
@@ -2467,12 +2475,16 @@ end;
 
 procedure TIdeNotifier.ViewNotification(const View: IOTAEditView; Operation: TOperation);
 begin
+  {$IFDEF DEBUGMESSAGES}
   MsgServices.AddToolMessage('','ViewNotification', 'Notifier',0,0);
+  {$ENDIF DEBUGMESSAGES}
 end;
 
 procedure TIdeNotifier.ViewActivated(const View: IOTAEditView);
 begin
+  {$IFDEF DEBUGMESSAGES}
   MsgServices.AddToolMessage('','ViewActivated', 'Notifier',0,0);
+  {$ENDIF DEBUGMESSAGES}
 end;
 
 constructor TMyModuleNotifier.Create(AModule: IOTAModule; AWizard: TLiveBlameWizard; AList: TList; AInfo: string);
@@ -2768,7 +2780,9 @@ begin
   else
     OStr := 'opInsert';
 
+  {$IFDEF DEBUGMESSAGES}
   MsgServices.AddToolMessage('','ViewNotification[' + OStr + ']' + FInfo, 'MyModuleNotifier',0,0);
+  {$ENDIF DEBUGMESSAGES}
   OutputDebugString(PChar('ViewNotification[' + OStr + ']' + FInfo));
   {//TODO:?
   if Operation = opInsert then
@@ -2788,7 +2802,9 @@ begin
     if Assigned(EW.GetForm) then
       OStr := OStr + ', ' + EW.GetForm.Name;
   end;
+  {$IFDEF DEBUGMESSAGES}
   MsgServices.AddToolMessage('','ViewActivated[' + OStr + ']' + FInfo, 'MyModuleNotifier',0,0);
+  {$ENDIF DEBUGMESSAGES}
   OutputDebugString(PChar('ViewActivated[' + OStr + ']' + FInfo));
   EP := CheckAddPanel(FWizard, View, FList);
   if Assigned(EP) then
