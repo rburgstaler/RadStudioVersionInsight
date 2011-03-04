@@ -36,6 +36,7 @@ type
   TLiveBlameWizard = class(TInterfacedObject, IOTAWizard, IOTANotifier, IOTAEditorNotifier)
   private
     NotifierIndex: Integer;
+    NotifierIndex2: Integer;
     FPanelList: TList;
   public
     { IOTANotifier }
@@ -72,7 +73,7 @@ uses
 
 procedure Register;
 begin
-  TLiveBlameWizard.Create;
+  RegisterPackageWizard(TLiveBlameWizard.Create);
 end;
 
 type
@@ -1463,7 +1464,7 @@ begin
   FRevisionRectangles.Free;
   FColorList.Free;
   FSettings.Free;
-  FLiveBlameData.Free;
+  //FLiveBlameData.Free;
   FCheckShowTimer.Enabled := False;
   FTimer.Enabled := False;
   FPaintBox.OnPaint := nil;
@@ -3363,11 +3364,12 @@ begin
   NotifierIndex := EditorServices.AddNotifier(TMyINTANotifier.Create(Self, FPanelList));
 
   Services := BorlandIDEServices as IOTAServices;
-  Services.AddNotifier(TIdeNotifier.Create(Self, FPanelList));//TODO:?
+  NotifierIndex2 := Services.AddNotifier(TIdeNotifier.Create(Self, FPanelList));//TODO:?
 end;
 
 destructor TLiveBlameWizard.Destroy;
 var
+  Services: IOTAServices;
   EditorServices: IOTAEditorServices;
   I: Integer;
 begin
@@ -3375,6 +3377,11 @@ begin
   begin
     EditorServices := BorlandIDEServices as IOTAEditorServices;
     EditorServices.RemoveNotifier(NotifierIndex);
+  end;
+  if NotifierIndex2 <> -1 then
+  begin
+    Services := BorlandIDEServices as IOTAServices;
+    Services.RemoveNotifier(NotifierIndex2);
   end;
   for I := Pred(FPanelList.Count) downto 0 do
     TObject(FPanelList[I]).Free;
