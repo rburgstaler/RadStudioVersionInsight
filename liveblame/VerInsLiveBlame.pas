@@ -666,6 +666,7 @@ type
     FMenuItem2: TMenuItem;
     FMenuItem3: TMenuItem;
     procedure CheckInstallHook;
+    procedure UnInstallHooks;
     procedure CreatePopupMenu;
     procedure BuildLineHistory;
     procedure UpdateLineHistory(ASourceEditor: IOTASourceEditor);
@@ -1459,6 +1460,7 @@ end;
 
 destructor TLiveBlameEditorPanel.Destroy;
 begin
+  UnInstallHooks;
   FLiveBlameDataList.Free;
   FRevisionHintRectangles.Free;
   FRevisionRectangles.Free;
@@ -1946,6 +1948,20 @@ begin
   begin
     UpdateGutterWidth;
     FPaintBox.Invalidate;
+  end;
+end;
+
+procedure TLiveBlameEditorPanel.UnInstallHooks;
+begin
+  if FInstalledHook then
+  begin
+    CurrentPanel := nil;
+    CurrentWindow := 0;
+    EditControlHook := nil;
+    UnhookWindowsHookEx(CallWndProcHook);
+    UnhookWindowsHookEx(CallWndProcRetHook);
+    UnhookWindowsHookEx(GetMsgHook);
+    FInstalledHook := False;
   end;
 end;
 
@@ -2718,6 +2734,22 @@ begin
   end;
 end;
 
+procedure RemoveBlamePanel;
+var
+  tempComponent, P: TComponent;
+begin
+  tempComponent := Application.FindComponent('EditWindow_0');
+  if Assigned(tempComponent) then
+  begin
+    tempComponent := tempComponent.FindComponent('Panel2');
+    if Assigned(tempComponent) then
+    begin
+      P := tempComponent.FindComponent('BlameButtonPanel');
+      P.Free;
+    end;
+  end;
+end;
+
 function CheckAddPanel(AWizard: TLiveBlameWizard; View: IOTAEditView; AList: TList): TLiveBlameEditorPanel;
 var
   EW: INTAEditWindow;
@@ -3373,6 +3405,7 @@ var
   EditorServices: IOTAEditorServices;
   I: Integer;
 begin
+  RemoveBlamePanel;
   if NotifierIndex <> -1 then
   begin
     EditorServices := BorlandIDEServices as IOTAEditorServices;
