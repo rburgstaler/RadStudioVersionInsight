@@ -121,17 +121,23 @@ type
     property Status: THgStatus read FStatus;
   end;
 
+  THgCloneCallBack = procedure(Sender: TObject; const AText: string; var Cancel: Boolean) of object;
   THgStatusCallback = procedure(Sender: TObject; Item: THgItem; var Cancel: Boolean) of object;
 
   THgError = (hgeSuccess, hgeEmptyCommitMessage, hgeNoUsernameSupplied, hgeUnknown);
 
   THgClient = class(TObject)
   private
+    FCancel: Boolean;
+    FCloneCallBack: THgCloneCallBack;
     FHgExecutable: string;
     FLastCommitInfoChangeSetID: Integer;
+    procedure ExecuteTextHandler(const Text: string);
   public
     constructor Create;
     function Add(const AFileName: string): Boolean;
+    function Clone(const ASourcePath, ADestPath: string; AUncompressed: Boolean = False;
+      APull: Boolean = False; ARevision: string = ''; ACallBack: THgCloneCallBack = nil): Boolean;
     function Commit(AFileList: TStringList; const AMessage: string; const AUser: string = ''): THgError;
     function FindRepositoryRoot(const APath: string): string;
     function GetModifications(const APath: string; ACallBack: THgStatusCallback): Boolean;
@@ -372,9 +378,18 @@ begin
 end;
 
 function Execute(const CommandLine: string; var Output: string; RawOutput: Boolean = False;
-  AbortPtr: PBoolean = nil): Cardinal;
+  AbortPtr: PBoolean = nil): Cardinal; overload;
 begin
   Result := InternalExecute(CommandLine, Output, nil, RawOutput, AbortPtr);
+end;
+
+function Execute(const CommandLine: string; OutputLineCallback: TTextHandler; RawOutput: Boolean = False;
+  AbortPtr: PBoolean = nil): Cardinal; overload;
+var
+  Dummy: string;
+begin
+  Dummy := '';
+  Result := InternalExecute(CommandLine, Dummy, OutputLineCallback, RawOutput, AbortPtr);
 end;
 
 //------------------------------------------------------------------------------
@@ -989,6 +1004,44 @@ begin
   finally
     SetCurrentDir(CurrentDir);
   end;
+end;
+
+function THgClient.Clone(const ASourcePath, ADestPath: string; AUncompressed: Boolean = False;
+  APull: Boolean = False; ARevision: string = ''; ACallBack: THgCloneCallBack = nil): Boolean;
+var
+  Res: Integer;
+  CmdLine: string;
+  CurrentDir: string;
+begin
+  CurrentDir := GetCurrentDir;
+  try
+    ForceDirectories(ADestPath);
+    SetCurrentDir(ADestPath);
+    CmdLine := HgExecutable + ' clone -v ';
+    if ARevision <> '' then
+      CmdLine := CmdLine + Format('-r%s ', [ARevision]);
+    if AUncompressed then
+      CmdLine := CmdLine + '--uncompressed ';
+    if APull then
+      CmdLine := CmdLine + '--pull ';
+    CmdLine := CmdLine + QuoteFileName(ASourcePath) + ' .';
+    FCloneCallBack := ACallBack;
+    try
+      FCancel := False;
+      Res := Execute(CmdLine, ExecuteTextHandler, False, @FCancel);
+    finally
+      FCloneCallBack := nil;
+    end;
+    Result := Res = 0;
+  finally
+    SetCurrentDir(CurrentDir);
+  end;
+end;
+
+procedure THgClient.ExecuteTextHandler(const Text: string);
+begin
+  if Assigned(FCloneCallBack) then
+    FCloneCallBack(Self, Text, FCancel);
 end;
 
 function THgClient.FindRepositoryRoot(const APath: string): string;

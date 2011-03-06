@@ -51,6 +51,11 @@ contains
   HgTree in 'HgTree.pas',
   HgClientCommitFrame in 'HgClientCommitFrame.pas' {SvnCommitFrame: TFrame},
   HgIDECommit in 'HgIDECommit.pas',
-  HgIDEMessageView in 'HgIDEMessageView.pas';
+  HgIDEMessageView in 'HgIDEMessageView.pas',
+  HgIDECheckout in 'HgIDECheckout.pas',
+  HgClientCheckout in 'HgClientCheckout.pas' {CheckoutDialog},
+  HgClientProjectSelect in 'HgClientProjectSelect.pas' {SvnProjectSelectDialog},
+  HgClientUpdate in 'HgClientUpdate.pas' {UpdateDialog};
 
 end.
+

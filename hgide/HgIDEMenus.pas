@@ -131,7 +131,7 @@ function RootDirectory(const HgClient: THgClient; const Path: string): string;
 implementation
 
 uses SysUtils, HgIDEConst, HgIDECommit{, SvnIDEUpdate, SvnIDEClean}, HgIDELog{,
-  SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser};
+  SvnIDEImport}, HgIDECheckout{, SvnIDERepoBrowser};
 
 const
   sMercurialName = 'versioninsight.mercurial';
@@ -408,13 +408,13 @@ end;
 
 function THgNotifier.CheckoutProject(var ProjectName: string): Boolean;
 begin
-  Result := False;
+  Result := DoCheckOutProject(ProjectName);
 end;
 
 function THgNotifier.CheckoutProjectWithConnection(var ProjectName: string;
   const Connection: string): Boolean;
 begin
-  Result := False;
+  Result := DoCheckOutProject(ProjectName, Connection);
 end;
 
 constructor THgNotifier.Create(const HgIDEClient: THgIDEClient);
