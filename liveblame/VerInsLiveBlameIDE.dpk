@@ -34,6 +34,9 @@ contains
   HashUnit in 'textdiff\HashUnit.pas',
   VerInsClientProgress in 'VerInsClientProgress.pas' {VerInsProgressDialog},
   VerInsIDETypes in 'VerInsIDETypes.pas',
-  VerInsLiveBlame in 'VerInsLiveBlame.pas';
+  VerInsLiveBlame in 'VerInsLiveBlame.pas',
+  VerInsIDEBlameAddInOptions in 'VerInsIDEBlameAddInOptions.pas',
+  VerInsBlameOptionsFrame in 'VerInsBlameOptionsFrame.pas' {frmVerInsBlameOptions: TFrame},
+  VerInsBlameSettings in 'VerInsBlameSettings.pas';
 
 end.

@@ -69,11 +69,13 @@ uses
   {$IFDEF SVNINTERNAL}
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
-  VerInsIDETypes;
+  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings;
 
 procedure Register;
 begin
   RegisterPackageWizard(TLiveBlameWizard.Create);
+  SetPresetsKey((BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\VersionInsight\Blame');
+  RegisterAddInOptions;
 end;
 
 type
@@ -159,96 +161,6 @@ type
     property UserColor: TColor read FUserColor write FUserColor;
   end;
 
-  TJVCSLineHistoryUserSettingsItem = class(TPersistent)
-  private
-    FColor: TColor;
-    FUserName: string;
-    FVisibleName: string;
-  public
-    procedure AssignTo(Dest: TPersistent); override;
-  public
-    constructor Create;
-    property Color: TColor read FColor write FColor;
-    property UserName: string read FUserName write FUserName;
-    property VisibleName: string read FVisibleName write FVisibleName;
-  end;
-
-  TJVCSLineHistoryUserSettings = class(TPersistent)
-  private
-    FItems: TObjectList;
-    function GetCount: Integer;
-    function GetItems(AIndex: Integer): TJVCSLineHistoryUserSettingsItem;
-  public
-    procedure AssignTo(Dest: TPersistent); override;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function Add: TJVCSLineHistoryUserSettingsItem;
-    procedure Clear;
-    procedure Delete(AIndex: Integer);
-    function IndexOfUser(const AUserName: string): Integer;
-    property Count: Integer read GetCount;
-    property Items[AIndex: Integer]: TJVCSLineHistoryUserSettingsItem read GetItems; default;
-  end;
-
-  TJVCSLineHistorySettings = class(TObject)
-  private
-    FColorBarOrderList: TList;
-    FDateEndColor: TColor;
-    FDateFormat: string;
-    FDateStartColor: TColor;
-    FLineColorMode: Integer;
-    FPaintMethod: Integer;
-    FRevisionEndColor: TColor;
-    FRevisionStartColor: TColor;
-    FShowLineNumbers: Boolean;
-    FShowRevisionInfoColor: Boolean;
-    FShowRevisionInfoText: Boolean;
-    FShowDateInfoColor: Boolean;
-    FShowDateInfoText: Boolean;
-    FShowUserInfoColor: Boolean;
-    FShowUserInfoText: Boolean;
-    {$IFDEF LINEINFOEX}
-    FShowRevisionCountInfoColor: Boolean;
-    FShowRevisionCountInfoText: Boolean;
-    FShowFirstRevisionInfoColor: Boolean;
-    FShowFirstRevisionInfoText: Boolean;
-    {$ENDIF LINEINFOEX}
-    FShowOrderList: TList;
-    FStaticUserColorList: TStringList;
-    FSuppressRevisionTextZeroDot: Boolean;
-    FUserSettingsList: TJVCSLineHistoryUserSettings;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Assign(AValue: TJVCSLineHistorySettings);
-    property ColorBarOrderList: TList read FColorBarOrderList;
-    property DateEndColor: TColor read FDateEndColor write FDateEndColor;
-    property DateFormat: string read FDateFormat write FDateFormat;
-    property DateStartColor: TColor read FDateStartColor write FDateStartColor;
-    property LineColorMode: Integer read FLineColorMode write FLineColorMode;
-    property PaintMethod: Integer read FPaintMethod write FPaintMethod;
-    property RevisionEndColor: TColor read FRevisionEndColor write FRevisionEndColor;
-    property RevisionStartColor: TColor read FRevisionStartColor write FRevisionStartColor;
-    property ShowLineNumbers: Boolean read FShowLineNumbers write FShowLineNumbers;
-    property ShowRevisionInfoColor: Boolean read FShowRevisionInfoColor write FShowRevisionInfoColor;
-    property ShowRevisionInfoText: Boolean read FShowRevisionInfoText write FShowRevisionInfoText;
-    property ShowDateInfoColor: Boolean read FShowDateInfoColor write FShowDateInfoColor;
-    property ShowDateInfoText: Boolean read FShowDateInfoText write FShowDateInfoText;
-    property ShowUserInfoColor: Boolean read FShowUserInfoColor write FShowUserInfoColor;
-    property ShowUserInfoText: Boolean read FShowUserInfoText write FShowUserInfoText;
-    {$IFDEF LINEINFOEX}
-    property ShowRevisionCountInfoColor: Boolean read FShowRevisionCountInfoColor write FShowRevisionCountInfoColor;
-    property ShowRevisionCountInfoText: Boolean read FShowRevisionCountInfoText write FShowRevisionCountInfoText;
-    property ShowFirstRevisionInfoColor: Boolean read FShowFirstRevisionInfoColor write FShowFirstRevisionInfoColor;
-    property ShowFirstRevisionInfoText: Boolean read FShowFirstRevisionInfoText write FShowFirstRevisionInfoText;
-    {$ENDIF LINEINFOEX}
-    property ShowOrderList: TList read FShowOrderList;
-    property StaticUserColorList: TStringList read FStaticUserColorList;
-    property SuppressRevisionTextZeroDot: Boolean read FSuppressRevisionTextZeroDot write FSuppressRevisionTextZeroDot;
-    property UserSettingsList: TJVCSLineHistoryUserSettings read FUserSettingsList;
-  end;
-
   TRevisionRectangle = class(TObject)
   private
     FRect: TRect;
@@ -280,181 +192,6 @@ begin
   FRevisionColor := clNone;
   FLineHistoryRevision := ALineHistoryRevision;
   FUserColor := clNone;
-end;
-
-constructor TJVCSLineHistoryUserSettingsItem.Create;
-begin
-  inherited Create;
-  FColor := clNone;
-  FUserName := '';
-  FVisibleName := '';
-end;
-
-procedure TJVCSLineHistoryUserSettingsItem.AssignTo(Dest: TPersistent);
-begin
-  if Dest is TJVCSLineHistoryUserSettingsItem then
-  begin
-    TJVCSLineHistoryUserSettingsItem(Dest).Color := FColor;
-    TJVCSLineHistoryUserSettingsItem(Dest).UserName := FUserName;
-    TJVCSLineHistoryUserSettingsItem(Dest).VisibleName := FVisibleName;
-  end
-  else
-    inherited AssignTo(Dest);
-end;
-
-constructor TJVCSLineHistoryUserSettings.Create;
-begin
-  inherited Create;
-  FItems := TObjectList.Create;
-end;
-
-destructor TJVCSLineHistoryUserSettings.Destroy;
-begin
-  FItems.Free;
-  inherited Destroy;
-end;
-
-function TJVCSLineHistoryUserSettings.Add: TJVCSLineHistoryUserSettingsItem;
-begin
-  FItems.Add(TJVCSLineHistoryUserSettingsItem.Create);
-  Result := TJVCSLineHistoryUserSettingsItem(FItems.Last);
-end;
-
-procedure TJVCSLineHistoryUserSettings.AssignTo(Dest: TPersistent);
-var
-  I: Integer;
-begin
-  if Dest is TJVCSLineHistoryUserSettings then
-  begin
-    TJVCSLineHistoryUserSettings(Dest).Clear;
-    for I := 0 to Pred(Count) do
-      TJVCSLineHistoryUserSettings(Dest).Add.Assign(Items[I]);
-  end
-  else
-    inherited AssignTo(Dest);
-end;
-
-procedure TJVCSLineHistoryUserSettings.Clear;
-begin
-  FItems.Clear;
-end;
-
-procedure TJVCSLineHistoryUserSettings.Delete(AIndex: Integer);
-begin
-  FItems.Delete(AIndex);
-end;
-
-function TJVCSLineHistoryUserSettings.GetCount: Integer;
-begin
-  Result := FItems.Count;
-end;
-
-function TJVCSLineHistoryUserSettings.GetItems(AIndex: Integer): TJVCSLineHistoryUserSettingsItem;
-begin
-  Result := TJVCSLineHistoryUserSettingsItem(FItems[AIndex]);
-end;
-
-function TJVCSLineHistoryUserSettings.IndexOfUser(const AUserName: string): Integer;
-var
-  I: Integer;
-begin
-  Result := -1;
-  for I := 0 to Pred(Count) do
-    if Items[I].UserName = AUserName then
-    begin
-      Result := I;
-      Break;
-    end;
-end;
-
-constructor TJVCSLineHistorySettings.Create;
-begin
-  inherited Create;
-  FColorBarOrderList := TList.Create;
-  FColorBarOrderList.Add(Pointer(1));
-  FColorBarOrderList.Add(Pointer(2));
-  FColorBarOrderList.Add(Pointer(3));
-  FDateEndColor := clWhite;
-  FDateFormat := 'yyyy"/"mm"/"dd';
-  FDateStartColor := clRed;
-  FLineColorMode := 0;
-  FPaintMethod := 0;
-  FRevisionEndColor := clWhite;
-  FRevisionStartColor := clYellow;
-  FShowLineNumbers := True;
-  FShowRevisionInfoColor := True;
-  FShowRevisionInfoText := True;
-  FShowDateInfoColor := True;
-  FShowDateInfoText := True;
-  FShowUserInfoColor := True;
-  FShowUserInfoText := True;
-  {$IFDEF LINEINFOEX}
-  FShowRevisionCountInfoColor := True;
-  FShowRevisionCountInfoText := True;
-  FShowFirstRevisionInfoColor := True;
-  FShowFirstRevisionInfoText := True;
-  {$ENDIF LINEINFOEX}
-  FShowOrderList := TList.Create;
-  FStaticUserColorList := TStringList.Create;
-  FSuppressRevisionTextZeroDot := False;
-  FUserSettingsList := TJVCSLineHistoryUserSettings.Create;
-end;
-
-destructor TJVCSLineHistorySettings.Destroy;
-begin
-  FColorBarOrderList.Free;
-  FShowOrderList.Free;
-  FStaticUserColorList.Free;
-  FUserSettingsList.Free;
-  inherited Destroy;
-end;
-
-{$IFNDEF DELPHI6_UP}
-procedure AssignTList(ADest, ASource: TList);
-var
-  I: Integer;
-begin
-  ADest.Clear;
-  for I := 0 to Pred(ASource.Count) do
-    ADest.Add(ASource[I]);
-end;
-{$ENDIF ~DELPHI6_UP}
-
-procedure TJVCSLineHistorySettings.Assign(AValue: TJVCSLineHistorySettings);
-begin
-  {$IFDEF DELPHI6_UP}
-  FColorBarOrderList.Assign(AValue.ColorBarOrderList);
-  {$ELSE}
-  AssignTList(FColorBarOrderList, AValue.ColorBarOrderList);
-  {$ENDIF DELPHI6_UP}
-  FDateEndColor := AValue.DateEndColor;
-  FDateFormat := AValue.DateFormat;
-  FDateStartColor := AValue.DateStartColor;
-  FLineColorMode := AValue.LineColorMode;
-  FPaintMethod := AValue.PaintMethod;
-  FRevisionEndColor := AValue.RevisionEndColor;
-  FRevisionStartColor := AValue.RevisionStartColor;
-  FShowLineNumbers := AValue.FShowLineNumbers;
-  FShowRevisionInfoColor := AValue.ShowRevisionInfoColor;
-  FShowRevisionInfoText := AValue.ShowRevisionInfoText;
-  FShowDateInfoColor := AValue.ShowDateInfoColor;
-  FShowDateInfoText := AValue.ShowDateInfoText;
-  FShowUserInfoColor := AValue.ShowUserInfoColor;
-  FShowUserInfoText := AValue.ShowUserInfoText;
-  {$IFDEF LINEINFOEX}
-  FShowRevisionCountInfoColor := AValue.ShowRevisionCountInfoColor;
-  FShowRevisionCountInfoText := AValue.ShowRevisionCountInfoText;
-  FShowFirstRevisionInfoColor := AValue.ShowFirstRevisionInfoColor;
-  FShowFirstRevisionInfoText := AValue.ShowFirstRevisionInfoText;
-  {$ENDIF LINEINFOEX}
-  {$IFDEF DELPHI6_UP}
-  FShowOrderList.Assign(AValue.ShowOrderList);
-  {$ELSE}
-  AssignTList(FShowOrderList, AValue.ShowOrderList);
-  {$ENDIF DELPHI6_UP}
-  FStaticUserColorList.Assign(AValue.StaticUserColorList);
-  FSuppressRevisionTextZeroDot := AValue.SuppressRevisionTextZeroDot;
-  FUserSettingsList.Assign(AValue.UserSettingsList);
 end;
 
 { TRevisionRectangle }
@@ -585,6 +322,7 @@ type
     destructor Destroy; override;
     procedure BuildLineHistory(ASettings: TJVCSLineHistorySettings); virtual; abstract;
     procedure Load; virtual; abstract;
+    procedure UpdateSettings(ASettings: TJVCSLineHistorySettings);
   end;
 
   {$IFDEF SVNINTERNAL}
@@ -665,6 +403,8 @@ type
     FMenuItem1: TMenuItem;
     FMenuItem2: TMenuItem;
     FMenuItem3: TMenuItem;
+    FConfigMenuItem: TMenuItem;
+    FLastPresetTimeStamp: TDateTime;
     procedure CheckInstallHook;
     procedure UnInstallHooks;
     procedure CreatePopupMenu;
@@ -689,6 +429,8 @@ type
     procedure CMHintShow(var Msg: TMessage);
     function GetHintRect(ARevision: TRevisionColor; var ARect: TRect): Boolean;
     procedure HandlePopupMenu(Sender: TObject);
+    procedure HandlePopupMenuPopup(Sender: TObject);
+    procedure SetPreset(APresetID: Integer);
   protected
     procedure SetEnabled(AValue: Boolean); override;
   public
@@ -805,6 +547,90 @@ begin
   // Avoid that mouse moves over the non-client area or key presses cancel the current hint.
   if Result and ((Msg.Message = WM_NCMOUSEMOVE) or ((Msg.Message >= WM_KEYFIRST) and (Msg.Message <= WM_KEYLAST))) then
     Result := False;
+end;
+
+function GetAgeStr(ADateTime: TDateTime): string;
+var
+  DateDiff, LNow: TDateTime;
+  y1, m1, y2, m2, dummy: Word;
+  ym1, ym2: DWord;
+  AgeAmount: Integer;
+  SingularAgeStr, PluralAgeStr: string;
+begin
+  LNow := Now;
+  DateDiff := LNow - ADateTime;
+  if DateDiff < 0 then
+  begin
+    AgeAmount := -1;
+    SingularAgeStr := 'future';
+  end
+  else
+  if DateDiff < (1 / (24 * 60 * 60)) then
+  begin
+    AgeAmount := -1;
+    SingularAgeStr := 'now';
+  end
+  else
+  if DateDiff < (1 / (24 * 60)) then
+  begin
+    AgeAmount := Round(DateDiff * 24 * 60 * 60);
+    SingularAgeStr := 'second';
+    PluralAgeStr := 'seconds';
+  end
+  else
+  if DateDiff < (1 / 24) then
+  begin
+    AgeAmount := Round(DateDiff * 24 * 60);
+    SingularAgeStr := 'minute';
+    PluralAgeStr := 'minutes';
+  end
+  else
+  if DateDiff < 1 then
+  begin
+    AgeAmount := Round(DateDiff * 24);
+    SingularAgeStr := 'hour';
+    PluralAgeStr := 'hours';
+  end
+  else
+  if DateDiff < 7 then
+  begin
+    AgeAmount := Round(DateDiff);
+    SingularAgeStr := 'day';
+    PluralAgeStr := 'days';
+  end
+  else
+  if DateDiff < (7 * 8) then
+  begin
+    AgeAmount := Round(DateDiff / 7);
+    SingularAgeStr := 'week';
+    PluralAgeStr := 'weeks';
+  end
+  else
+  begin
+    DecodeDate(LNow, y1, m1, dummy);
+    ym1 := y1 * 12 + m1;
+    DecodeDate(ADateTime, y2, m2, dummy);
+    ym2 := y2 * 12 + m2;
+    if ym1 - ym2 < 12 then
+    begin
+      AgeAmount := ym1 - ym2;
+      SingularAgeStr := 'month';
+      PluralAgeStr := 'months';
+    end
+    else
+    begin
+      AgeAmount := (ym1 - ym2) div 12;
+      SingularAgeStr := 'year';
+      PluralAgeStr := 'years';
+    end;
+  end;
+  if AgeAmount < 0 then
+    Result := SingularAgeStr
+  else
+  if AgeAmount = 1 then
+    Result := Format('%d %s', [AgeAmount, SingularAgeStr])
+  else
+    Result := Format('%d %s', [AgeAmount, PluralAgeStr]);
 end;
 
 type
@@ -933,6 +759,17 @@ begin
   end;
 end;
 
+function GetDateStr(ADateFormat: string; ADateTime: TDateTime): string;
+begin
+  if ADateFormat = AgeDateFormat then
+    Result := GetAgeStr(ADateTime - 0.1 / 86400)
+  else
+  if ADateFormat = Age2DateFormat then
+    Result := GetAge2Str(ADateTime - 0.1 / 86400)
+  else
+    Result := FormatDateTime(ADateFormat, ADateTime);
+end;
+
 constructor TCustomLiveBlameData.Create(const AFileName: string);
 begin
   inherited Create(nil);
@@ -954,6 +791,24 @@ begin
   FLines.Free;
   FRevisions.Free;
   inherited Destroy;
+end;
+
+procedure TCustomLiveBlameData.UpdateSettings(ASettings: TJVCSLineHistorySettings);
+var
+  I, Idx: Integer;
+  LHRevision: TJVCSLineHistoryRevision;
+begin
+  FRevisionColorList.Clear;
+  for I := 0 to FRevisions.Count - 1 do
+  begin
+    LHRevision := FRevisions[I];
+    Idx := ASettings.UserSettingsList.IndexOfUser(LHRevision.FOrgUserStr);
+    if Idx <> -1 then
+      LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+    else
+      LHRevision.FUserStr := LHRevision.FOrgUserStr;
+    LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, LHRevision.FDate);
+  end;
 end;
 
 {$IFDEF SVNINTERNAL}
@@ -992,10 +847,7 @@ begin
           LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
         else
           LHRevision.FUserStr := FSvnItem.HistoryItems[I].Author;
-        if ASettings.DateFormat = 'AGE2' then
-          LHRevision.FDateStr := GetAge2Str(FSvnItem.HistoryItems[I].Time)
-        else
-          LHRevision.FDateStr := DateTimeToStr(FSvnItem.HistoryItems[I].Time);
+        LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, FSvnItem.HistoryItems[I].Time);
         LHRevision.FDate := FSvnItem.HistoryItems[I].Time;
         LHRevision.FComment := TrimRight(FSvnItem.HistoryItems[I].LogMessage);
       end;
@@ -1004,19 +856,13 @@ begin
       FBufferRevision.FRevisionStr := 'Buff';
       FBufferRevision.FUserStr := 'User';//TODO:
 
-      if ASettings.DateFormat = 'AGE2' then
-        FBufferRevision.FDateStr := GetAge2Str(Now - 0.1 / 86400)
-      else
-        FBufferRevision.FDateStr := DateTimeToStr(Now);
+      FBufferRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
       FBufferRevision.FDate := Now;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FFileRevision := FRevisions.Last;
       FFileRevision.FRevisionStr := 'File';
       FFileRevision.FUserStr := 'User';//TODO:
-      if ASettings.DateFormat = 'AGE2' then
-        FFileRevision.FDateStr := GetAge2Str(Now - 0.1 / 86400)
-      else
-        FFileRevision.FDateStr := DateTimeToStr(Now);
+      FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
       FFileRevision.FDate := Now;
       for I := 1 to FSvnItem.HistoryItems[0].BlameCount do
       begin
@@ -1115,10 +961,7 @@ begin
             LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
           else
             LHRevision.FUserStr := FFileHistory.Author[I];
-          if ASettings.DateFormat = 'AGE2' then
-            LHRevision.FDateStr := GetAge2Str(FFileHistory.Date[I])
-          else
-            LHRevision.FDateStr := DateTimeToStr(FFileHistory.Date[I]);
+          LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, FFileHistory.Date[I]);
           LHRevision.FDate := FFileHistory.Date[I];
           LHRevision.FComment := TrimRight(FFileHistory.Comment[I]);
         end;
@@ -1127,19 +970,13 @@ begin
         FBufferRevision.FRevisionStr := 'Buff';
         FBufferRevision.FUserStr := 'User';//TODO:
 
-        if ASettings.DateFormat = 'AGE2' then
-          FBufferRevision.FDateStr := GetAge2Str(Now - 0.1 / 86400)
-        else
-          FBufferRevision.FDateStr := DateTimeToStr(Now);
+        FBufferRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
         FBufferRevision.FDate := Now;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FFileRevision := FRevisions.Last;
         FFileRevision.FRevisionStr := 'File';
         FFileRevision.FUserStr := 'User';//TODO:
-        if ASettings.DateFormat = 'AGE2' then
-          FFileRevision.FDateStr := GetAge2Str(Now - 0.1 / 86400)
-        else
-          FFileRevision.FDateStr := DateTimeToStr(Now);
+        FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
         FFileRevision.FDate := Now;
         for I := 1 to FAnnotationLineProvider.Count do
         begin
@@ -1434,7 +1271,9 @@ begin
   FProgressBar := TProgressBar.Create(Self);
   FProgressBar.Parent := Self;
   FProgressBar.Visible := False;
-
+  FLastPresetTimeStamp := -1;
+  if GetPresets <> nil then
+    SetPreset(GetPresets.SelectedID);
   CreatePopupMenu;
   Visible := False;
 end;
@@ -1442,6 +1281,7 @@ end;
 procedure TLiveBlameEditorPanel.CreatePopupMenu;
 begin
   FPopupMenu := TPopupMenu.Create(Self);
+  FPopupMenu.OnPopup := HandlePopupMenuPopup;
   FMenuItem1 := TMenuItem.Create(FPopupMenu);
   FMenuItem1.Caption := 'Preset 1';
   FMenuItem1.OnClick := HandlePopupMenu;
@@ -1834,37 +1674,101 @@ begin
 end;
 
 procedure TLiveBlameEditorPanel.HandlePopupMenu(Sender: TObject);
+var
+  PresetID: Integer;
+  MenuItem: TMenuItem;
+  Presets: TJVCSLineHistoryPresets;
 begin
+  PresetID := -1;
   if Sender = FMenuItem1 then
   begin
-    FSettings.FShowRevisionInfoText := False;
-    FSettings.FShowRevisionInfoColor := True;
-    FSettings.FShowDateInfoText := False;
-    FSettings.FShowDateInfoColor := False;
-    FSettings.FShowUserInfoText := False;
-    FSettings.FShowUserInfoColor := False;
+    FSettings.ShowRevisionInfoText := False;
+    FSettings.ShowRevisionInfoColor := True;
+    FSettings.ShowDateInfoText := False;
+    FSettings.ShowDateInfoColor := False;
+    FSettings.ShowUserInfoText := False;
+    FSettings.ShowUserInfoColor := False;
   end
   else
   if Sender = FMenuItem2 then
   begin
-    FSettings.FShowRevisionInfoText := True;
-    FSettings.FShowRevisionInfoColor := True;
-    FSettings.FShowDateInfoText := False;
-    FSettings.FShowDateInfoColor := False;
-    FSettings.FShowUserInfoText := False;
-    FSettings.FShowUserInfoColor := False;
+    FSettings.ShowRevisionInfoText := True;
+    FSettings.ShowRevisionInfoColor := True;
+    FSettings.ShowDateInfoText := False;
+    FSettings.ShowDateInfoColor := False;
+    FSettings.ShowUserInfoText := False;
+    FSettings.ShowUserInfoColor := False;
   end
   else
   if Sender = FMenuItem3 then
   begin
-    FSettings.FShowRevisionInfoText := True;
-    FSettings.FShowRevisionInfoColor := True;
-    FSettings.FShowDateInfoText := True;
-    FSettings.FShowDateInfoColor := True;
-    FSettings.FShowUserInfoText := True;
-    FSettings.FShowUserInfoColor := True;
+    FSettings.ShowRevisionInfoText := True;
+    FSettings.ShowRevisionInfoColor := True;
+    FSettings.ShowDateInfoText := True;
+    FSettings.ShowDateInfoColor := True;
+    FSettings.ShowUserInfoText := True;
+    FSettings.ShowUserInfoColor := True;
+  end
+  else
+  if Sender = FConfigMenuItem then
+  begin
+    (BorlandIDEServices as IOTAServices).GetEnvironmentOptions.EditOptions('Version Control', 'Blame');
+    Presets := GetPresets;
+    if Assigned(Presets) then
+    begin
+      if Presets.IndexOfID(Presets.SelectedID) <> -1 then
+        PresetID := Presets.SelectedID
+      else
+      if Presets.Count > 0 then
+        PresetID := Presets[0].ID;
+    end;
+  end
+  else
+  if Sender is TMenuItem then
+  begin
+    MenuItem := TMenuItem(Sender);
+    if (MenuItem.GroupIndex = 128) and (MenuItem.Tag > 0) then
+    begin
+      PresetID := MenuItem.Tag;
+      MenuItem.Checked := True;
+    end;
   end;
-  UpdateGutterWidth;
+  SetPreset(PresetID);
+end;
+
+procedure TLiveBlameEditorPanel.HandlePopupMenuPopup(Sender: TObject);
+var
+  Presets: TJVCSLineHistoryPresets;
+  I: Integer;
+  MenuItem: TMenuItem;
+begin
+  Presets := GetPresets;
+  if (Presets <> nil) and (Presets.ModificationTimestamp <> FLastPresetTimeStamp) then
+  begin
+    FPopupMenu.Items.Clear;
+    FMenuItem1 := nil;
+    FMenuItem2 := nil;
+    FMenuItem3 := nil;
+    for I := 0 to Pred(Presets.Count) do
+    begin
+      MenuItem := TMenuItem.Create(FPopupMenu);
+      MenuItem.Caption := Presets[I].Name;
+      MenuItem.Tag := Presets[I].ID;
+      MenuItem.GroupIndex := 128;
+      MenuItem.OnClick := HandlePopupMenu;
+      MenuItem.RadioItem := True;
+      MenuItem.Checked := (Presets.SelectedID > 0) and (Presets[I].ID = Presets.SelectedID);
+      FPopupMenu.Items.Add(MenuItem);
+    end;
+    MenuItem := TMenuItem.Create(FPopupMenu);
+    MenuItem.Caption := '-';
+    FPopupMenu.Items.Add(MenuItem);
+    FConfigMenuItem := TMenuItem.Create(FPopupMenu);
+    FConfigMenuItem.Caption := 'P&roperties';
+    FConfigMenuItem.OnClick := HandlePopupMenu;
+    FPopupMenu.Items.Add(FConfigMenuItem);
+    FLastPresetTimeStamp := Presets.ModificationTimestamp;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.HandleRevisionClick(ASender: TObject;
@@ -1885,6 +1789,30 @@ end;
 procedure TLiveBlameEditorPanel.SetEnabled(AValue: Boolean);
 begin
 //
+end;
+
+procedure TLiveBlameEditorPanel.SetPreset(APresetID: Integer);
+var
+  Idx: Integer;
+  Presets: TJVCSLineHistoryPresets;
+begin
+  Presets := GetPresets;
+  if Assigned(Presets) then
+  begin
+    Idx := Presets.IndexOfID(APresetID);
+    if Idx <> -1 then
+    begin
+      FColorList.Clear;
+      FColorList.AddObject('', TObject(GetNextColor));
+      FSettings.Assign(Presets[Idx].Settings);
+      FLiveBlameData.UpdateSettings(FSettings);
+      Presets.SelectedID := APresetID;
+    end;
+  end;
+  UpdateGutterWidth;
+  FPaintBox.Invalidate;
+  if Width < 5 then
+    Width := 5;
 end;
 
 procedure TLiveBlameEditorPanel.ShowHidePanel(Sender: TObject);
@@ -2279,10 +2207,7 @@ begin
     FLiveBlameData.FLastAge := EC.GetContentAge;
     FLiveBlameData.FLastStreamSize := StreamStat.cbSize;
     FLiveBlameData.FBufferRevision.FDate := Now;//FLastAge + 1 / 24 - 1 / 86400;
-    if FSettings.DateFormat = 'AGE2' then
-      FLiveBlameData.FBufferRevision.FDateStr := GetAge2Str(Now - 1 / 86400)
-    else
-      FLiveBlameData.FBufferRevision.FDateStr := DateTimeToStr(FLiveBlameData.FLastAge);
+    FLiveBlameData.FBufferRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FLastAge);
     MS := TMemoryStream.Create;
     try
       SA := TStreamAdapter.Create(MS);
@@ -3006,21 +2931,46 @@ type
 
     function IsSameInfo(AInfo1, AInfo2: TJVCSLineHistoryRevision): Boolean;
     begin
-      Result := AInfo1 = AInfo2;
-      if ABlockType <> btRevision then
+      if FSettings.PaintMethod = 0 then
+        Result := False
+      else
+      if FSettings.PaintMethod = 1 then
       begin
-        if Assigned(AInfo1) and Assigned(AInfo2) then
+        Result := AInfo1 = AInfo2;
+        if ABlockType <> btRevision then
         begin
-          case ABlockType of
-            btDate: Result := AInfo1.DateStr = AInfo2.DateStr;
-            btUser: Result := AInfo1.UserStr = AInfo2.UserStr;
-            else
-              Result := False;
-          end;
-        end
-        else
-          Result := False;
-      end;
+          if Assigned(AInfo1) and Assigned(AInfo2) then
+          begin
+            case ABlockType of
+              btDate: Result := AInfo1.DateStr = AInfo2.DateStr;
+              btUser: Result := AInfo1.UserStr = AInfo2.UserStr;
+              else
+                Result := False;
+            end;
+          end
+          else
+            Result := False;
+        end;
+      end
+      else
+      if FSettings.PaintMethod = 2 then
+      begin
+        Result := AInfo1 = AInfo2;
+        if Result then
+        begin
+          if Assigned(AInfo1) and Assigned(AInfo2) then
+          begin
+            if Result then
+              Result := AInfo1.DateStr = AInfo2.DateStr;
+            if Result then
+              Result := AInfo1.UserStr = AInfo2.UserStr;
+          end
+          else
+            Result := AInfo1 <> AInfo2;
+        end;
+      end
+      else
+        Result := False;
     end;
 
     function GetColor(AInfo: TJVCSLineHistoryRevision): TColor;
@@ -3221,10 +3171,8 @@ begin
         FLiveBlameData.FStage := 3;
       if FLiveBlameData.FBlameInfoAvailable then
       begin
-        if FSettings.DateFormat = 'AGE2' then
-          FLiveBlameData.FBufferRevision.FDateStr := GetAge2Str(FLiveBlameData.FBufferRevision.FDate);
-        if FSettings.DateFormat = 'AGE2' then
-          FLiveBlameData.FFileRevision.FDateStr := GetAge2Str(FLiveBlameData.FFileRevision.FDate);
+        FLiveBlameData.FBufferRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FBufferRevision.FDate);
+        FLiveBlameData.FFileRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FFileRevision.FDate);
       end;
 
       FRevisionRectangles.Clear;
