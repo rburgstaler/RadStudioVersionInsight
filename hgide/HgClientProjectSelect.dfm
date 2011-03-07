@@ -48,7 +48,7 @@ object SvnProjectSelectDialog: TSvnProjectSelectDialog
         TitleImage = -1
       end>
     GroupView = True
-    SmallImages = SvnImageModule.ShellImagesSmall
+    SmallImages = HgImageModule.ShellImagesSmall
     TabOrder = 0
     ViewStyle = vsReport
     OnChange = NamesChange

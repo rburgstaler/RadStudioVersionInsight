@@ -84,7 +84,7 @@ object SvnCommitFrame: TSvnCommitFrame
       ReadOnly = True
       RowSelect = True
       PopupMenu = CommitMenu
-      SmallImages = SvnImageModule.ShellImagesSmall
+      SmallImages = HgImageModule.ShellImagesSmall
       TabOrder = 0
       ViewStyle = vsReport
       OnColumnClick = FilesColumnClick
