@@ -285,8 +285,13 @@ begin
 end;
 
 procedure TfrmVerInsBlameOptions.Init;
+var
+  Idx: Integer;
 begin
-  UpdateListBox(0);
+  Idx := FPresets.IndexOfID(FPresets.SelectedID);
+  if Idx = -1 then
+    Idx := 0;
+  UpdateListBox(Idx);
 end;
 
 procedure TfrmVerInsBlameOptions.ListBox1Click(Sender: TObject);
@@ -370,12 +375,18 @@ end;
 procedure TfrmVerInsBlameOptions.UpdateListBox(AIndex: Integer);
 var
   I: Integer;
+  S: string;
 begin
   ListBox1.Items.BeginUpdate;
   try
     ListBox1.Items.Clear;
     for I := 0 to FPresets.Count - 1 do
-      ListBox1.Items.Add(FPresets[I].Name);
+    begin
+      S := FPresets[I].Name;
+      if FPresets[I].ID = FPresets.SelectedID then
+        S := S + ' (Active)';
+      ListBox1.Items.Add(S);
+    end;
     if (AIndex >= 0) and (AIndex < ListBox1.Items.Count) then
     begin
       ListBox1.ItemIndex := AIndex;
