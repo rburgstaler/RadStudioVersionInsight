@@ -183,6 +183,35 @@ type
     function FindRect(AX, AY: Integer): TRevisionRectangle;
   end;
 
+  TDeletedLines = class(TObject)
+  private
+    FItems: TObjectList<TStringList>;
+    FVer: Integer;
+    function GetHint: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Hint: string read GetHint;
+    property Items: TObjectList<TStringList> read FItems;
+    property Ver: Integer read FVer write FVer;
+  end;
+
+  TDeletedLinesTriangle = class(TObject)
+  private
+    FDeletedLines: TDeletedLines;
+    FPoint: TPoint;
+  public
+    constructor Create(APoint: TPoint; ADeletedLines: TDeletedLines);
+    property DeletedLines: TDeletedLines read FDeletedLines;
+    property Point: TPoint read FPoint;
+  end;
+
+  TDeletedLinesTriangleList = class(TObjectList<TDeletedLinesTriangle>)
+  public
+    procedure Add(APoint: TPoint; ADeletedLines: TDeletedLines);
+    function Find(AX, AY: Integer): Integer;
+  end;
+
 { TRevisionColor }
 
 constructor TRevisionColor.Create(ALineHistoryRevision: TJVCSLineHistoryRevision);
@@ -271,17 +300,102 @@ begin
   end;
 end;
 
+{ TDeletedLines }
+
+constructor TDeletedLines.Create;
+begin
+  inherited Create;
+  FItems := TObjectList<TStringList>.Create;
+end;
+
+destructor TDeletedLines.Destroy;
+begin
+  FItems.Free;
+  inherited Destroy;
+end;
+
+function TDeletedLines.GetHint: string;
+var
+  I: Integer;
+begin
+  Result := Format('%d lines deleted', [Items[0].Count]);
+  for I := 0 to Items[0].Count - 1 do
+    Result := Result + #13#10 + Items[0][I];
+end;
+
+{ TDeletedLinesTriangle }
+
+constructor TDeletedLinesTriangle.Create(APoint: TPoint; ADeletedLines: TDeletedLines);
+begin
+  inherited Create;
+  FPoint := APoint;
+  FDeletedLines := ADeletedLines;
+end;
+
+{ TDeletedLinesTriangleList }
+
+procedure TDeletedLinesTriangleList.Add(APoint: TPoint; ADeletedLines: TDeletedLines);
+begin
+  inherited Add(TDeletedLinesTriangle.Create(APoint, ADeletedLines));
+end;
+
+//http://delphi.about.com/cs/adptips2001/a/bltip0601_5.htm
+function PtInPoly(const Points: Array of TPoint; X,Y: Integer): Boolean;
+var
+  Count, K, J: Integer;
+begin
+  Result := False;
+  Count := Length(Points) ;
+  J := Count-1;
+  for K := 0 to Count-1 do
+  begin
+   if ((Points[K].Y <=Y) and (Y < Points[J].Y)) or
+      ((Points[J].Y <=Y) and (Y < Points[K].Y)) then
+   begin
+    if (x < (Points[j].X - Points[K].X) *
+       (y - Points[K].Y) /
+       (Points[j].Y - Points[K].Y) + Points[K].X) then
+        Result := not Result;
+   end;
+    J := K;
+  end;
+end;
+
+function TDeletedLinesTriangleList.Find(AX, AY: Integer): Integer;
+var
+  I, XS, YS: Integer;
+  PolyPoints: array of TPoint;
+begin
+  Result := -1;
+  SetLength(PolyPoints, 3);
+  for I := 0 to Count - 1 do
+  begin
+    XS := Items[I].Point.X;
+    YS := Items[I].Point.Y;
+    PolyPoints[0] := Point(XS, YS);
+    PolyPoints[1] := Point(XS + 8, YS + 4);
+    PolyPoints[2] := Point(XS, YS + 8);
+    if PtInPoly(PolyPoints, AX, AY) then
+    begin
+      Result := I;
+      Break;
+    end;
+  end;
+end;
+
 type
   TRevisionClickEvent = procedure(ASender: TObject; ARevisionIDStr: string) of object;
 
   PBlameHintData = ^TBlameHintData;
   TBlameHintData = record
     Revision: TRevisionColor;
+    DeletedLines: TDeletedLines;
     Rect: TRect;
   end;
 
   TBlameHintWindow = class(THintWindow)
   private
+    procedure PaintDeleteHint(ATargetCanvas: TCanvas; ADeleteLines: TDeletedLines; ARect: TRect);
     procedure PaintHint(ATargetCanvas: TCanvas; ARevision: TRevisionColor;
       ARect: TRect);
   protected
@@ -308,6 +422,7 @@ type
     FBufferRevision: TJVCSLineHistoryRevision;
     FFileRevision: TJVCSLineHistoryRevision;
     FRevisionColorList: TObjectList<TRevisionColor>;
+    FDeletedLines: TObjectList<TDeletedLines>;
     FButtonDown: Boolean;
     FBlameCounter: Integer;
     FBlameRevision: Integer;
@@ -392,6 +507,7 @@ type
     FPainting: Boolean;
     FRevisionRectangles: TRevisionRectangleList;
     FRevisionHintRectangles: TRevisionRectangleList;
+    FDeletedLinesHintTriangles: TDeletedLinesTriangleList;
     FHighlightY: Integer;
     FLastHighlightY: Integer;
     FLastHighlightedRevisionIDStr: string;
@@ -425,8 +541,9 @@ type
     procedure HandleRevisionClick(ASender: TObject; ARevisionIDStr: string);
     procedure HandleMouseLeave(Sender: TObject);
     procedure HandleHintShow(var Msg: TMessage);
-    function GetHintTextAndSize(AX, AY: Integer; var ARevision: TRevisionColor; var ABlockRect, AHintRect: TRect): Boolean;
+    function GetHintTextAndSize(AX, AY: Integer; var ARevision: TRevisionColor; var ABlockRect, AHintRect: TRect; var ADeletedLines: TDeletedLines): Boolean;
     procedure CMHintShow(var Msg: TMessage);
+    function GetDeleteHintRect(ADeletedLines: TDeletedLines; var ARect: TRect): Boolean;
     function GetHintRect(ARevision: TRevisionColor; var ARect: TRect): Boolean;
     procedure HandlePopupMenu(Sender: TObject);
     procedure HandlePopupMenuPopup(Sender: TObject);
@@ -469,7 +586,39 @@ procedure TBlameHintWindow.Paint;
 begin
   if Assigned(FHintData.Revision) and (FHintData.Rect.Right - FHintData.Rect.Left > 0) and
     (FHintData.Rect.Bottom - FHintData.Rect.Top > 0) then
-    PaintHint(Canvas, FHintData.Revision, FHintData.Rect);
+    PaintHint(Canvas, FHintData.Revision, FHintData.Rect)
+  else
+  if Assigned(FHintData.DeletedLines) and (FHintData.Rect.Right - FHintData.Rect.Left > 0) and
+    (FHintData.Rect.Bottom - FHintData.Rect.Top > 0) then
+    PaintDeleteHint(Canvas, FHintData.DeletedLines, FHintData.Rect);
+end;
+
+procedure TBlameHintWindow.PaintDeleteHint(ATargetCanvas: TCanvas;
+  ADeleteLines: TDeletedLines; ARect: TRect);
+var
+  S: string;
+  ClipRect, R: TRect;
+begin
+  R := ARect;
+  if CheckWin32Version(6) and ThemeServices.ThemesEnabled and True then
+  begin
+    // Paint Vista gradient background if themes enabled
+    ClipRect := R;
+    ClipRect.Bottom := ClipRect.Bottom + 3;
+    InflateRect(R, 4, 4);
+    with ThemeServices do
+      DrawElement(ATargetCanvas.Handle, GetElementDetails(tttStandardNormal), R, ClipRect);
+    R := ClipRect;
+  end
+  else
+  begin
+    ATargetCanvas.Brush.Color := clInfoBk;
+    ATargetCanvas.Rectangle(R);
+  end;
+  ATargetCanvas.Font.Name := 'Courier New';
+  ATargetCanvas.Font.Size := 10;
+  S := ADeleteLines.Hint;
+  ATargetCanvas.TextRect(R, S, []);
 end;
 
 procedure TBlameHintWindow.PaintHint(ATargetCanvas: TCanvas; ARevision: TRevisionColor; ARect: TRect);
@@ -493,6 +642,7 @@ begin
     ATargetCanvas.Brush.Color := clInfoBk;
     ATargetCanvas.Rectangle(R);
   end;
+  ATargetCanvas.Font := Screen.HintFont;
   ATargetCanvas.Font.Style := [fsBold];
   ATargetCanvas.Brush.Style := bsClear;
   ATargetCanvas.TextOut(4, 4, 'Revision:');
@@ -777,6 +927,7 @@ begin
   FRevisions := TObjectList<TJVCSLineHistoryRevision>.Create;
   FLines := TList<TJVCSLineHistoryRevision>.Create;
   FOrgLines := TList<TJVCSLineHistoryRevision>.Create;
+  FDeletedLines := TObjectList<TDeletedLines>.Create;
   FLastAge := 0;
   FBlameInfoAvailable := False;
   FBlameInfoReady := False;
@@ -786,6 +937,7 @@ end;
 
 destructor TCustomLiveBlameData.Destroy;
 begin
+  FDeletedLines.Free;
   FRevisionColorList.Free;
   FOrgLines.Free;
   FLines.Free;
@@ -1264,6 +1416,7 @@ begin
   FColorList.AddObject('', TObject(GetNextColor));
   FRevisionRectangles := TRevisionRectangleList.Create;
   FRevisionHintRectangles := TRevisionRectangleList.Create;
+  FDeletedLinesHintTriangles := TDeletedLinesTriangleList.Create;
   FHighlightY := -1;
   FLastHighlightY := -1;
   FPaintBox.OnMouseMove := HandleMouseMove;
@@ -1302,6 +1455,7 @@ destructor TLiveBlameEditorPanel.Destroy;
 begin
   UnInstallHooks;
   FLiveBlameDataList.Free;
+  FDeletedLinesHintTriangles.Free;
   FRevisionHintRectangles.Free;
   FRevisionRectangles.Free;
   FColorList.Free;
@@ -1488,6 +1642,31 @@ begin
   end;
 end;
 
+function TLiveBlameEditorPanel.GetDeleteHintRect(ADeletedLines: TDeletedLines;
+  var ARect: TRect): Boolean;
+var
+  B: TBitmap;
+  TargetCanvas: TCanvas;
+  S: string;
+  R: TRect;
+begin
+  B := TBitmap.Create;
+  try
+    TargetCanvas := B.Canvas;
+    TargetCanvas.Font.Name := 'Courier New';
+    TargetCanvas.Font.Size := 10;
+    R := TargetCanvas.ClipRect;
+    R := Rect(0, 0, 80, 76);
+    S := ADeletedLines.Hint;
+    TargetCanvas.TextRect(R, S, [tfCalcRect]);
+    R.Bottom := R.Bottom + 4;
+    ARect := R;
+    Result := True;
+  finally
+    B.Free;
+  end;
+end;
+
 function TLiveBlameEditorPanel.GetEditControl: TObject;
 var
   I: Integer;
@@ -1546,28 +1725,45 @@ begin
 end;
 
 function TLiveBlameEditorPanel.GetHintTextAndSize(AX, AY: Integer; var ARevision: TRevisionColor;
-  var ABlockRect, AHintRect: TRect): Boolean;
+  var ABlockRect, AHintRect: TRect; var ADeletedLines: TDeletedLines): Boolean;
 var
-  I: Integer;
+  I, Idx: Integer;
   RevisionRect: TRevisionRectangle;
 begin
   AHintRect := Rect(0, 0, 0, 0);
   ABlockRect := Rect(0, 0, 0, 0);
   ARevision := nil;
+  ADeletedLines := nil;
   Result := False;
-  RevisionRect := FRevisionHintRectangles.FindRect(AX, AY);
-  if Assigned(RevisionRect) then
+  Idx := FDeletedLinesHintTriangles.Find(AX, AY);
+  if Idx <> -1 then
   begin
-    for I := 0 to FLiveBlameData.FRevisionColorList.Count - 1 do
-      if FLiveBlameData.FRevisionColorList[I].LineHistoryRevision.RevisionStr = RevisionRect.RevisionIDStr then
-      begin
-        ARevision := FLiveBlameData.FRevisionColorList[I];
-        Break;
-      end;
-    if Assigned(ARevision) and GetHintRect(ARevision, AHintRect) then
+    if GetDeleteHintRect(FDeletedLinesHintTriangles[Idx].DeletedLines, AHintRect) then
     begin
-      ABlockRect := RevisionRect.Rect;
+      ADeletedLines := FDeletedLinesHintTriangles[Idx].DeletedLines;
+      ABlockRect.Left := FDeletedLinesHintTriangles[Idx].Point.X;
+      ABlockRect.Top := FDeletedLinesHintTriangles[Idx].Point.Y;
+      ABlockRect.Right := ABlockRect.Left + 8;
+      ABlockRect.Top := ABlockRect.Bottom + 8;
       Result := True;
+    end;
+  end
+  else
+  begin
+    RevisionRect := FRevisionHintRectangles.FindRect(AX, AY);
+    if Assigned(RevisionRect) then
+    begin
+      for I := 0 to FLiveBlameData.FRevisionColorList.Count - 1 do
+        if FLiveBlameData.FRevisionColorList[I].LineHistoryRevision.RevisionStr = RevisionRect.RevisionIDStr then
+        begin
+          ARevision := FLiveBlameData.FRevisionColorList[I];
+          Break;
+        end;
+      if Assigned(ARevision) and GetHintRect(ARevision, AHintRect) then
+      begin
+        ABlockRect := RevisionRect.Rect;
+        Result := True;
+      end;
     end;
   end;
 end;
@@ -1601,15 +1797,17 @@ var
   P, PClient: TPoint;
   FoundHint: Boolean;
   Revision: TRevisionColor;
+  DeletedLines: TDeletedLines;
 begin
   GetCursorPos(P);
   PClient := ScreenToClient(P);
-  FoundHint := GetHintTextAndSize(PClient.X, PClient.Y, Revision, BlockRect, HintRect);
+  FoundHint := GetHintTextAndSize(PClient.X, PClient.Y, Revision, BlockRect, HintRect, DeletedLines);
   if FoundHint then
   begin
     InflateRect(BlockRect, 2, 2);
     FHintData.Revision := Revision;
     FHintData.Rect := HintRect;
+    FHintData.DeletedLines := DeletedLines;
     with PHintInfo(Msg.LParam)^ do
     begin
       HintStr := ' ';
@@ -2035,10 +2233,10 @@ begin
   end;
 end;
 
-procedure BuildDiff(ALines1, ALines2: TStringList; ANewObject: TObject);
+procedure BuildDiff(ALines1, ALines2: TStringList; ANewObject: TObject; ADeletedLines1, ADeletedLines2: TObjectList<TDeletedLines>; ANewDel: Integer);
 var
   HashList1, HashList2: TList;
-  I, J, K: Integer;
+  I, J, K, L: Integer;
   Diff: TDiff;
 begin
   HashList1 := TList.Create;
@@ -2049,6 +2247,10 @@ begin
       HashList1.Add(HashLine(ALines1[I], True, True));
     for I := 0 to ALines2.Count - 1 do
       HashList2.Add(HashLine(ALines2[I], True, True));
+    while ADeletedLines1.Count < HashList1.Count do
+      ADeletedLines1.Add(nil);
+    while ADeletedLines2.Count < HashList2.Count do
+      ADeletedLines2.Add(nil);
     Diff.Execute(PIntArray(HashList1.List),PIntArray(HashList2.List),
       HashList1.count, HashList2.count);
     J := 0;
@@ -2060,6 +2262,17 @@ begin
           while J < x do
           begin
             ALines2.Objects[K] := Alines1.Objects[J];
+            if Assigned(ADeletedLines1[J]) then
+            begin
+              if not Assigned(ADeletedLines2[K]) then
+                ADeletedLines2[K] := TDeletedLines.Create;
+              ADeletedLines2[K].Ver := ADeletedLines2[K].Ver or ADeletedLines1[J].Ver;
+              for L := 0 to ADeletedLines1[J].Items.Count - 1 do
+              begin
+                ADeletedLines2[K].Items.Add(TStringList.Create);
+                ADeletedLines2[K].Items.Last.Assign(ADeletedLines1[J].Items[L]);
+              end;
+            end;
             Inc(J);
             Inc(K);
           end;
@@ -2079,11 +2292,30 @@ begin
             K := y + Range;
           end
           else //Kind = ckDel
+          begin
             J := x + Range;
+            if not Assigned(ADeletedLines2[K]) then
+              ADeletedLines2[K] := TDeletedLines.Create;
+            ADeletedLines2[K].Ver := ANewDel;
+            ADeletedLines2[K].Items.Add(TStringList.Create);
+            for L := x to x + Range - 1 do
+              ADeletedLines2[K].Items.Last.Add(ALines1[L]);
+          end;
         end;
     while J < Alines1.count do
     begin
       Alines2.Objects[K] := Alines1.Objects[J];
+      if Assigned(ADeletedLines1[J]) then
+      begin
+        if not Assigned(ADeletedLines2[K]) then
+          ADeletedLines2[K] := TDeletedLines.Create;
+        ADeletedLines2[K].Ver := ADeletedLines2[K].Ver or ADeletedLines1[J].Ver;
+        for L := 0 to ADeletedLines1[J].Items.Count - 1 do
+        begin
+          ADeletedLines2[K].Items.Add(TStringList.Create);
+          ADeletedLines2[K].Items.Last.Assign(ADeletedLines1[J].Items[L]);
+        end;
+      end;
       Inc(J);
       Inc(K);
     end;
@@ -2104,18 +2336,21 @@ type
     FOrgLines: TList<TJVCSLineHistoryRevision>;
     FFileRevision: TJVCSLineHistoryRevision;
     FBufferRevision: TJVCSLineHistoryRevision;
+    FDeletedLines2: TObjectList<TDeletedLines>;
   protected
     procedure Execute; override;
   public
     constructor Create(AFileName: string; ALatestRevisionContent, AEditorContent: AnsiString; AOnFinished: TNotifyEvent;
-      AOrgLines: TList<TJVCSLineHistoryRevision>; AFileRevision, ABufferRevision: TJVCSLineHistoryRevision);
+      AOrgLines: TList<TJVCSLineHistoryRevision>; AFileRevision, ABufferRevision: TJVCSLineHistoryRevision;
+      ADeletedLines2: TObjectList<TDeletedLines>);
     destructor Destroy; override;
   end;
 
 { TLineUpdateThread }
 
 constructor TLineUpdateThread.Create(AFileName: string; ALatestRevisionContent, AEditorContent: AnsiString; AOnFinished: TNotifyEvent;
-  AOrgLines: TList<TJVCSLineHistoryRevision>; AFileRevision, ABufferRevision: TJVCSLineHistoryRevision);
+  AOrgLines: TList<TJVCSLineHistoryRevision>; AFileRevision, ABufferRevision: TJVCSLineHistoryRevision;
+  ADeletedLines2: TObjectList<TDeletedLines>);
 begin
   inherited Create(False);
   FFileName := AFileName;
@@ -2127,6 +2362,7 @@ begin
   FFileRevision := AFileRevision;
   FBufferRevision := ABufferRevision;
   FOrgLines := AOrgLines;
+  FDeletedLines2 := ADeletedLines2;
 end;
 
 destructor TLineUpdateThread.Destroy;
@@ -2140,10 +2376,13 @@ var
   I: Integer;
   TSL, TSL2, SL: TStringList;
   DT: TDateTime;
+  DeletedLines1, DeletedLines2: TObjectList<TDeletedLines>;
 begin
   TSL := TStringList.Create;
   TSL2 := TStringList.Create;
   SL := TStringList.Create;
+  DeletedLines1 := TObjectList<TDeletedLines>.Create;
+  DeletedLines2 := TObjectList<TDeletedLines>.Create;
   try
     TSL.LoadFromFile(FFileName);
     FileAge(FFileName, DT);
@@ -2155,9 +2394,10 @@ begin
     for I := 0 to TSL2.Count - 1 do
       if FOrgLines.Count > I then
         TSL2.Objects[I] := FOrgLines[I];
-    BuildDiff(TSL2, TSL, TObject(2));
+    BuildDiff(TSL2, TSL, TObject(2), DeletedLines1, DeletedLines2, 2);
     SL.Text := UTF8ToString(FEditorContent);
-    BuildDiff(TSL, SL, TObject(1));
+    FDeletedLines2.Clear;
+    BuildDiff(TSL, SL, TObject(1), DeletedLines2, FDeletedLines2, 1);
     FLines.Clear;
     for I := 0 to SL.Count - 1 do
       if SL.Objects[I] = TObject(1) then
@@ -2168,6 +2408,8 @@ begin
       else
         FLines.Add(TJVCSLineHistoryRevision(SL.Objects[I]));
   finally
+    DeletedLines1.Free;
+    DeletedLines2.Free;
     SL.Free;
     TSL2.Free;
     TSL.Free;
@@ -2222,7 +2464,8 @@ begin
       end;
 
       TLineUpdateThread.Create(ASourceEditor.FileName, FLiveBlameData.FLatestRevisionContent, S,
-        HandleDiffThreadReady, FLiveBlameData.FOrgLines, FLiveBlameData.FFileRevision, FLiveBlameData.FBufferRevision);
+        HandleDiffThreadReady, FLiveBlameData.FOrgLines, FLiveBlameData.FFileRevision, FLiveBlameData.FBufferRevision,
+        FLiveBlameData.FDeletedLines);
       {//TODO:remove
       TSL := TStringList.Create;
       TSL2 := TStringList.Create;
@@ -2989,15 +3232,17 @@ type
 
   var
     LastBlockRevision: TJVCSLineHistoryRevision;
-    LastBlockStartY, LastBlockEndY{, LH}: Integer;
+    LastBlockStartY, LastBlockEndY{, LH}, LastBlockStartLine, LastBlockEndLine: Integer;
 
     procedure PaintLastBlock;
     var
+      I: Integer;
       S, RevisionIDStr: string;
       RevisionRect, RevisionHintRect: TRect;
       RevisionTextExtent: TSize;
       OldFontColor: TColor;
       OldFontStyle: TFontStyles;
+      OldFont: TFont;
     begin
       if (LastBlockEndY > -1) and Assigned(LastBlockRevision) then
       begin
@@ -3056,6 +3301,26 @@ type
         RevisionHintRect.Top := LastBlockStartY;
         RevisionHintRect.Bottom := LastBlockEndY;
         FRevisionHintRectangles.Add(RevisionHintRect, LastBlockRevision.RevisionStr);
+
+        for I := LastBlockStartLine to LastBlockEndLine do
+          if (FLiveBlameData.FDeletedLines.Count > I) and Assigned(FLiveBlameData.FDeletedLines[I]) and (FLiveBlameData.FDeletedLines[I].Ver <> 0) then
+          begin
+            OldFont := TFont.Create;
+            OldFont.Assign(ADestCanvas.Font);
+            try
+              ADestCanvas.Brush.Style := bsClear;
+              ADestCanvas.Font.Size := 12;
+              if FLiveBlameData.FDeletedLines[I].Ver and 2 <> 0 then
+                ADestCanvas.Font.Color := clBlack
+              else
+                ADestCanvas.Font.Color := clGray;
+              ADestCanvas.TextOut(1, LastBlockStartY + (I - LastBlockStartLine) * LH - 8, #9658);
+              FDeletedLinesHintTriangles.Add(Point(1, LastBlockStartY + (I - LastBlockStartLine) * LH - 8 + 4), FLiveBlameData.FDeletedLines[I]);
+            finally
+              ADestCanvas.Font.Assign(OldFont);
+              OldFont.Free;
+            end;
+          end;
       end;
     end;
 
@@ -3068,6 +3333,8 @@ type
       //LH := FSynEdit.LineHeight;
       LastBlockStartY := -1;
       LastBlockEndY := -1;
+      LastBlockStartLine := -1;
+      LastBlockEndLine := -1;
       LastBlockRevision := nil;
       for PaintLine := APaintBlock.FViewStartRow to APaintBlock.FViewEndRow do
       begin
@@ -3080,9 +3347,11 @@ type
           begin
             PaintLastBlock;
             LastBlockStartY := Y;
+            LastBlockStartLine := RealLine;
             LastBlockRevision := Revision;
           end;
           LastBlockEndY := Y + LH + 1;
+          LastBlockEndLine := RealLine;
         end;
       end;
       PaintLastBlock;
@@ -3177,6 +3446,7 @@ begin
 
       FRevisionRectangles.Clear;
       FRevisionHintRectangles.Clear;
+      FDeletedLinesHintTriangles.Clear;
       PaintBlocks := TObjectList<TPaintBlock>.Create;
       try
         PaintBlock := nil;
