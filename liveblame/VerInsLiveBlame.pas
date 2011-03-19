@@ -69,7 +69,7 @@ uses
   {$IFDEF SVNINTERNAL}
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
-  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings;
+  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry;
 
 procedure Register;
 begin
@@ -521,6 +521,8 @@ type
     FMenuItem3: TMenuItem;
     FConfigMenuItem: TMenuItem;
     FLastPresetTimeStamp: TDateTime;
+    FModificationColorFile: TColor;
+    FModificationColorBuffer: TColor;
     procedure CheckInstallHook;
     procedure UnInstallHooks;
     procedure CreatePopupMenu;
@@ -548,6 +550,7 @@ type
     procedure HandlePopupMenu(Sender: TObject);
     procedure HandlePopupMenuPopup(Sender: TObject);
     procedure SetPreset(APresetID: Integer);
+    function UpdateModificationColors: Boolean;
   protected
     procedure SetEnabled(AValue: Boolean); override;
   public
@@ -1428,6 +1431,7 @@ begin
   if GetPresets <> nil then
     SetPreset(GetPresets.SelectedID);
   CreatePopupMenu;
+  UpdateModificationColors;
   Visible := False;
 end;
 
@@ -1500,18 +1504,18 @@ begin
   begin
     FLiveBlameData.FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
     Result := TRevisionColor(FLiveBlameData.FRevisionColorList.Last);
-    Result.DateColor := clYellow;
-    Result.RevisionColor := clYellow;
-    Result.UserColor := clYellow;
+    Result.DateColor := FModificationColorBuffer;
+    Result.RevisionColor := FModificationColorBuffer;
+    Result.UserColor := FModificationColorBuffer;
   end
   else
   if not Assigned(Result) and (ALineHistoryRevision.RevisionStr = 'File') then
   begin
     FLiveBlameData.FRevisionColorList.Add(TRevisionColor.Create(ALineHistoryRevision));
     Result := TRevisionColor(FLiveBlameData.FRevisionColorList.Last);
-    Result.DateColor := clLime;
-    Result.RevisionColor := clLime;
-    Result.UserColor := clLime;
+    Result.DateColor := FModificationColorFile;
+    Result.RevisionColor := FModificationColorFile;
+    Result.UserColor := FModificationColorFile;
   end
   else
   if not Assigned(Result) then
@@ -2014,6 +2018,8 @@ begin
 end;
 
 procedure TLiveBlameEditorPanel.ShowHidePanel(Sender: TObject);
+var
+  I: Integer;
 begin
   if Sender is TSpeedButton then
     Visible := TSpeedButton(Sender).Down
@@ -2021,7 +2027,12 @@ begin
   if Sender is TAction then
     Visible := TAction(Sender).Checked;
   if Assigned(FLiveBlameData) then
+  begin
     FLiveBlameData.FButtonDown := Visible;
+    if Visible and UpdateModificationColors then
+      for I := 0 to Pred(FLiveBlameDataList.Count) do
+        FLiveBlameDataList[I].FRevisionColorList.Clear;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.ShowIfEditControl;
@@ -2500,6 +2511,43 @@ begin
       MS.Free;
     end;
   end;
+end;
+
+function GetModificationColor(ABackgroundColor: Boolean; ADefaultColor: TColor): TColor;
+var
+  Key, Ident, ColorStr: string;
+  RegIniFile: TRegIniFile;
+begin
+  Result := ADefaultColor;
+  Key := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey + '\Editor\Highlight';
+  RegIniFile := TRegIniFile.Create(Key);
+  try
+    if ABackgroundColor then
+      Ident := 'Background Color New'
+    else
+      Ident := 'Foreground Color New';
+    ColorStr := RegIniFile.ReadString('Modified line', Ident, '');
+    if ColorStr <> '' then
+      try
+        Result := StringToColor(ColorStr);
+      except
+      //
+      end;
+  finally
+    RegIniFile.Free;
+  end;
+end;
+
+function TLiveBlameEditorPanel.UpdateModificationColors: Boolean;
+var
+  OldColor: TColor;
+begin
+  OldColor := FModificationColorFile;
+  FModificationColorFile := GetModificationColor(False, clLime);
+  Result := OldColor <> FModificationColorFile;
+  OldColor := FModificationColorBuffer;
+  FModificationColorBuffer := GetModificationColor(True, clYellow);
+  Result := Result or (OldColor <> FModificationColorBuffer);
 end;
 
 procedure TLiveBlameEditorPanel.EnableCheckTimer;
