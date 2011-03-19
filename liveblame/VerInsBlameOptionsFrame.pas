@@ -64,14 +64,15 @@ type
     procedure Button1Click(Sender: TObject);
     procedure btnDeleteClick(Sender: TObject);
     procedure btnAddUserClick(Sender: TObject);
-    procedure lvUserColorsCustomDrawItem(Sender: TCustomListView;
-      Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure lvUserColorsSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure btnDeleteUserClick(Sender: TObject);
     procedure btnSaveAsClick(Sender: TObject);
     procedure btnRenameClick(Sender: TObject);
     procedure lvUserColorsResize(Sender: TObject);
+    procedure lvUserColorsAdvancedCustomDrawItem(Sender: TCustomListView;
+      Item: TListItem; State: TCustomDrawState; Stage: TCustomDrawStage;
+      var DefaultDraw: Boolean);
   private
     { Private declarations }
     FDateFormatList: TStringList;
@@ -301,18 +302,29 @@ begin
   FLastIndex := ListBox1.ItemIndex;
 end;
 
-procedure TfrmVerInsBlameOptions.lvUserColorsCustomDrawItem(
+procedure TfrmVerInsBlameOptions.lvUserColorsAdvancedCustomDrawItem(
   Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
-  var DefaultDraw: Boolean);
+  Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 var
+  R: TRect;
   Settings: TJVCSLineHistorySettings;
 begin
-  Settings := GetSettings;
-  if Assigned(Settings) and (Item.Index < Settings.UserSettingsList.Count) then
-    Sender.Canvas.Font.Color := Settings.UserSettingsList[Item.Index].Color
-  else
-    Sender.Canvas.Font.Color := clWindowText;
-  DefaultDraw := True;
+  if Stage = cdPostPaint then
+  begin
+    R := Item.DisplayRect(drBounds);
+    R.Left := R.Left + Sender.Column[0].Width + 2;
+    R.Right := R.Left + Sender.Column[1].Width - 4;
+    R.Top := R.Top + 2;
+    R.Bottom := R.Bottom - 2;
+    Settings := GetSettings;
+    if Assigned(Settings) and (Item.Index < Settings.UserSettingsList.Count) then
+      Sender.Canvas.Brush.Color := Settings.UserSettingsList[Item.Index].Color
+    else
+      Sender.Canvas.Brush.Color := clWindowText;
+    Sender.Canvas.Rectangle(R);
+    SetBkMode(Sender.Canvas.Handle, TRANSPARENT);//fixes strange black background for selected lines
+    DefaultDraw := False;
+  end;
 end;
 
 procedure TfrmVerInsBlameOptions.lvUserColorsResize(Sender: TObject);

@@ -65,7 +65,7 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
       Top = 240
       Width = 121
       Height = 17
-      Caption = 'User Text'
+      Caption = 'Text'
       Checked = True
       State = cbChecked
       TabOrder = 0
@@ -75,7 +75,7 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
       Top = 264
       Width = 121
       Height = 17
-      Caption = 'User Color Box'
+      Caption = 'Color Box'
       Checked = True
       State = cbChecked
       TabOrder = 1
@@ -197,7 +197,7 @@ object frmVerInsBlameOptions: TfrmVerInsBlameOptions
       RowSelect = True
       TabOrder = 12
       ViewStyle = vsReport
-      OnCustomDrawItem = lvUserColorsCustomDrawItem
+      OnAdvancedCustomDrawItem = lvUserColorsAdvancedCustomDrawItem
       OnResize = lvUserColorsResize
       OnSelectItem = lvUserColorsSelectItem
     end
