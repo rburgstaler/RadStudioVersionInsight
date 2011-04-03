@@ -57,7 +57,7 @@ resourcestring
   sUpdateCompletedAtRevision = 'At Revision: %d';
   sCommited = 'Commited';
   sCommitCompleted = 'Commit completed at revision: %d';
-  sCommitLoaded = 'An existing commit window was open. Please close it if you wish to start a new commit.';
+  sCommitLoaded = 'A commit window is still open. Please close it if you wish to start a new commit.';
   sNeedToClean = 'Run Subversion Clean to correct problem.';
   sRunClean = 'Would you like to run Subversion Clean?';
   sCleaning = 'Cleaning ';
