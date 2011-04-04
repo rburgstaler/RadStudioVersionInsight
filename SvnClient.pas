@@ -183,6 +183,7 @@ type
     FAbsent: Boolean;
     FAsyncUpdate: IAsyncUpdate;
     FBaseRevision: Integer;
+    FChangeList: string;
     FCheckSum: string;
     FCommitAuthor: string;
     FCommittedRevision: Integer;
@@ -297,6 +298,7 @@ type
     property Absent: Boolean read FAbsent;
     property AsyncUpdate: IAsyncUpdate read FAsyncUpdate write FAsyncUpdate;
     property BaseRevision: Integer read FBaseRevision;
+    property ChangeList: string read FChangeList;
     property CheckSum: string read FCheckSum;
     property CommitAuthor: string read FCommitAuthor;
     property CommittedRevision: Integer read FCommittedRevision;
@@ -498,6 +500,7 @@ type
     FAllocator: PAprAllocator;
     FAprLibLoaded: Boolean;
     FCancelled: Boolean;
+    FChangeLists: TStrings;
     FCommitLogMessage: string;
     FConfigDir: string;
     FCtx: PSvnClientCtx;
@@ -554,6 +557,7 @@ type
 
     procedure Add(const PathName: string; Recurse: Boolean = False; Force: Boolean = False; NoIgnore: Boolean = False;
       SubPool: PAprPool = nil);
+    procedure AddToChangeList(PathNames: TStrings; const AChangeList: string; SvnDepth: TSvnDepth = svnDepthFiles; SubPool: PAprPool = nil);
     procedure Blame(const PathName: string; Callback: TSvnBlameCallback; StartRevision: TSvnRevNum = 1;
       EndRevision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil);
     procedure Checkout(const PathName, TargetDir: string; Callback: TSvnNotifyCallback = nil; Recurse: Boolean = True;
@@ -568,6 +572,7 @@ type
     function FindRepositoryRoot(const Path: string; SubPool: PAprPool = nil): string;
     function FindRepository(const Path: string; SubPool: PAprPool = nil): string;
     function GetBaseURL(AFilesAndDirectories: TStringList; var ABasePath: string): string;
+    procedure GetChangeLists(const PathName: string; ChangeLists: TStrings; SvnDepth: TSvnDepth = svnDepthInfinity; SubPool: PAprPool = nil);
     procedure GetExternals(const PathName: string; Externals: TStrings; Recurse: Boolean = True);
     function GetModifications(const PathName: string; Callback: TSvnStatusCallback = nil;
       Recurse: Boolean = True; Update: Boolean = False; IgnoreExternals: Boolean = False;
@@ -593,6 +598,7 @@ type
     function NativePathToSvnPath(const NativePath: string; SubPool: PAprPool = nil): string;
     function PathNamesToAprArray(PathNames: TStrings; SubPool: PAprPool = nil): PAprArrayHeader; overload;
     function PathNamesToAprArray(const PathNames: array of string; SubPool: PAprPool = nil): PAprArrayHeader; overload;
+    procedure RemoveFromChangeList(PathNames: TStrings; SvnDepth: TSvnDepth = svnDepthFiles; SubPool: PAprPool = nil);
     procedure Revert(PathNames: TStrings; Callback: TSvnNotifyCallback = nil; Recurse: Boolean = True;
       SubPool: PAprPool = nil);
     procedure Resolved(const SvnPath: string; ConflictChoice: TSvnWcConflictChoice = SvnWcConflictChooseMerged;
@@ -790,6 +796,12 @@ begin
   Result := nil;
   if revision <> SVN_INVALID_REVNUM then
     TSvnClient(baton).DoBlame(line_no, revision, UTF8ToString(author), string(date), string(line));
+end;
+
+function ChangeListReceiver(baton: Pointer; path, changelist: PAnsiChar; pool: PAprPool): PSvnError; cdecl;
+begin
+  Result := nil;
+  TSvnClient(baton).FChangeLists.Add(UTF8ToString(changelist));
 end;
 
 function ConflictReceiver(out ConflictResult: PSvnWcConflictResult; description: PSvnWcConflictDescription;
@@ -1701,6 +1713,7 @@ begin
     FLockOwner := UTF8ToString(Status.entry^.lock_owner);
     FLockComment := UTF8ToString(Status.entry^.lock_comment);
     FLockTime := AprTimeToDateTime(Status.entry^.lock_creation_date);
+    FChangeList := UTF8ToString(Status.entry^.changelist);
   end
   else
   begin
@@ -1730,6 +1743,7 @@ begin
     FLockOwner := '';
     FLockComment := '';
     FLockTime := 0;
+    FChangeList := '';
   end;
   FTextStatus := Status.text_status;
   FPropStatus := Status.prop_status;
@@ -3044,6 +3058,27 @@ begin
   end;
 end;
 
+procedure TSvnClient.AddToChangeList(PathNames: TStrings; const AChangeList: string;
+  SvnDepth: TSvnDepth = svnDepthFiles; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  Paths: PAprArrayHeader;
+begin
+  if not Initialized then
+    Initialize;
+
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    Paths := PathNamesToAprArray(PathNames, SubPool);
+    SvnCheck(svn_client_add_to_changelist(Paths, PAnsiChar(UTF8Encode(AChangeList)), SvnDepth, nil, FCtx, SubPool));
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
 procedure TSvnClient.Blame(const PathName: string; Callback: TSvnBlameCallback; StartRevision: TSvnRevNum = 1;
   EndRevision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil);
 var
@@ -3427,6 +3462,36 @@ begin
       Result := '';
   finally
     Directories.Free;
+  end;
+end;
+
+procedure TSvnClient.GetChangeLists(const PathName: string; ChangeLists: TStrings;
+  SvnDepth: TSvnDepth = svnDepthInfinity; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+begin
+  if not Initialized then
+    Initialize;
+
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    ChangeLists.BeginUpdate;
+    try
+      FChangeLists := ChangeLists;
+      try
+        SvnCheck(svn_client_get_changelists(PAnsiChar(UTF8Encode(PathName)), nil, SvnDepth,
+          ChangeListReceiver, Self, FCtx, SubPool));
+      finally
+        FChangeLists := nil;
+      end;
+    finally
+      ChangeLists.EndUpdate;
+    end;
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
   end;
 end;
 
@@ -4048,6 +4113,26 @@ begin
     SvnCheck(svn_client_revert(Paths, Recurse, FCtx, SubPool));
   finally
     FNotifyCallback := nil;
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+procedure TSvnClient.RemoveFromChangeList(PathNames: TStrings; SvnDepth: TSvnDepth = svnDepthFiles; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  Paths: PAprArrayHeader;
+begin
+  if not Initialized then
+    Initialize;
+
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    Paths := PathNamesToAprArray(PathNames, SubPool);
+    SvnCheck(svn_client_remove_from_changelists(Paths, SvnDepth, nil, FCtx, SubPool));
+  finally
     if NewPool then
       apr_pool_destroy(SubPool);
   end;
