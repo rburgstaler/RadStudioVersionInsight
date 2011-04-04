@@ -43,6 +43,7 @@ type
   PSvnListViewItem = ^TSvnListViewItem;
   TSvnListViewItem = class
   protected
+    FChangeList: string;
     FCopied: Boolean;
     FDirectory: Boolean;
     FPathName: string;
@@ -52,9 +53,10 @@ type
     procedure SetTextStatus(Value: TSvnWCStatusKind);
   public
     constructor Create(const APathName: string; ATextStatus: TSvnWCStatusKind;
-      ADirectory, ACopied: Boolean);
+      ADirectory, ACopied: Boolean; AChangeList: string);
     procedure NewValues(const APathName: string; ATextStatus: TSvnWCStatusKind;
-      ADirectory, ACopied: Boolean);
+      ADirectory, ACopied: Boolean; AChangeList: string);
+    property ChangeList: string read FChangeList;
     property Copied: Boolean read FCopied;
     property Directory: Boolean read FDirectory;
     property PathName: string read FPathName;
@@ -73,6 +75,8 @@ type
   TGetFileStatusCallBack = procedure(const FileName: string; var SvnListViewItem: TSvnListViewItem) of object;
   TFileColorCallBack = function(AItem: TSvnListViewItem): TColor of object;
   TRefreshCallBack = procedure of object;
+  TAddToChangeListCallBack = function(const FileName, AChangeList: string): Boolean of object;
+  TRemoveFromChangeListCallBack = function(const FileName: string): Boolean of object;
 
   TSvnCommitFrame = class(TFrame)
     Label1: TLabel;
@@ -98,6 +102,10 @@ type
     Add1: TMenuItem;
     ResolveAction: TAction;
     ResolveAction1: TMenuItem;
+    RemoveChangeListAction: TAction;
+    RemoveFromChangeList1: TMenuItem;
+    MoveToChangeListAction: TAction;
+    MoveToChangeList1: TMenuItem;
 
     procedure CommitClick(Sender: TObject);
     procedure UnversionedFilesClick(Sender: TObject);
@@ -121,7 +129,14 @@ type
       var DefaultDraw: Boolean);
     procedure FilesCustomDrawItem(Sender: TCustomListView; Item: TListItem;
       State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure RemoveChangeListActionExecute(Sender: TObject);
+    procedure RemoveChangeListActionUpdate(Sender: TObject);
+    procedure MoveToChangeListActionUpdate(Sender: TObject);
+    procedure CommitMenuPopup(Sender: TObject);
+    procedure AddToNewChangeListClick(Sender: TObject);
+    procedure MoveToChangeListActionExecute(Sender: TObject);
   protected
+    FAddToChangeListCallBack: TAddToChangeListCallBack;
     FCommitCallBack: TCommitCallBack;
     FCloseCallBack: TCloseCallBack;
     FDiffCallBack: TDiffCallBack;
@@ -137,13 +152,17 @@ type
     FItemList: TList<TSvnListViewItem>;
     FIndexList: TList<Integer>;
     FRefreshItemList: TObjectList<TSvnListViewItem>;
+    FRemoveFromChangeListCallBack: TRemoveFromChangeListCallBack;
     FSortColumn: Integer;
     FSortOrder: Boolean;
     FRecentComments: TStringList;
     FURL: string;
     FNoFiles: Boolean;
+    FChangesLists: TStringList;
+    FChangesListIgnoreOnCommitGroupID: Integer;
     procedure CMRelease(var Message: TMessage); message CM_RELEASE;
     procedure DoRefresh;
+    function GetGroupID(const AChangeList: string): Integer;
     function GetSvnEditState: TSvnEditState;
     procedure SetRecentComments(Value: TStringList);
     procedure Notify(Sender: TObject; const Item: TSvnListViewItem;
@@ -168,6 +187,7 @@ type
     function PerformEditAction(AEditAction: TSvnEditAction): Boolean;
     procedure HandleMissingFiles(ARefresh: Boolean = False);
     property AddCallBack: TAddCallBack read FAddCallBack write FAddCallBack;
+    property AddToChangeListCallBack: TAddToChangeListCallBack read FAddToChangeListCallBack write FAddToChangeListCallBack;
     property CloseCallBack: TCloseCallBack read FCloseCallBack write FCloseCallBack;
     property CommitCallBack: TCommitCallBack read FCommitCallBack write FCommitCallBack;
     property DiffCallBack: TDiffCallBack read FDiffCallBack write FDiffCallBack;
@@ -177,6 +197,7 @@ type
     property GetFileStatusCallBack: TGetFileStatusCallBack read FGetFileStatusCallBack write FGetFileStatusCallBack;
     property RefreshCallBack: TRefreshCallBack read FRefreshCallBack write FRefreshCallBack;
     property RecentComments: TStringList read FRecentComments write SetRecentComments;
+    property RemoveFromChangeListCallBack: TRemoveFromChangeListCallBack read FRemoveFromChangeListCallBack write FRemoveFromChangeListCallBack;
     property SvnEditState: TSvnEditState read GetSvnEditState;
     property URL: string read FURL write SetURL;
   end;
@@ -186,6 +207,11 @@ implementation
 uses SvnClient, SvnUIConst, SvnClientRecentComments;
 
 {$R *.dfm}
+
+const
+  cIgnoreOnCommitChangeList = 'ignore-on-commit';
+  cTagNewChangeList = -1;
+  cTagIgnoreChangeList = -2;
 
 type
   TSvnListViewItemPathComparer = class(TInterfacedObject, IComparer<TSvnListViewItem>)
@@ -323,6 +349,42 @@ begin
     AddAction.Visible := False;
 end;
 
+procedure TSvnCommitFrame.AddToNewChangeListClick(Sender: TObject);
+var
+  I, StartIdx: Integer;
+  SvnListViewItem: TSvnListViewItem;
+  ChangeList: string;
+  ModifiedChangeLists: Boolean;
+begin
+  if (Files.SelCount > 0) and (Sender is TMenuItem) then
+  begin
+    case TMenuItem(Sender).Tag of
+      cTagNewChangeList: if not InputQuery(sCreateChangeListCaption, sCreateChangeListPrompt, ChangeList) then
+            ChangeList := '';
+      cTagIgnoreChangeList: ChangeList := cIgnoreOnCommitChangeList;
+      else
+        ChangeList := FChangesLists[TMenuItem(Sender).Tag];
+    end;
+    ModifiedChangeLists := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
+          if FAddToChangeListCallBack(SvnListViewItem.PathName, ChangeList) then
+          begin
+            SvnListViewItem.FChangeList := ChangeList;
+            if ChangeList = cIgnoreOnCommitChangeList then
+              SvnListViewItem.Checked := False;
+            ModifiedChangeLists := True;
+          end;
+      end;
+    if ModifiedChangeLists then
+      RebuildList;
+  end;
+end;
+
 procedure TSvnCommitFrame.BeginUpdate;
 begin
   Files.Items.BeginUpdate;
@@ -335,13 +397,17 @@ var
 begin
   FExecutingCheckAllClick := True;
   try
-  if CheckAll.State <> cbGrayed then
-  begin
-    Checked := CheckAll.State = cbChecked;
-    for I := 0 to Files.Items.Count - 1 do
-      Files.Items[I].Checked := Checked;
-  end;
-  UpdateCommitButton;
+    if CheckAll.State <> cbGrayed then
+    begin
+      Checked := CheckAll.State = cbChecked;
+      if (FChangesListIgnoreOnCommitGroupID <> -1) and Checked then
+        for I := 0 to Files.Items.Count - 1 do
+          Files.Items[I].Checked := Files.Items[I].GroupID <> FChangesListIgnoreOnCommitGroupID
+      else
+        for I := 0 to Files.Items.Count - 1 do
+          Files.Items[I].Checked := Checked;
+    end;
+    UpdateCommitButton;
   finally
     FExecutingCheckAllClick := False;
   end;
@@ -400,6 +466,78 @@ begin
   PostMessage(Handle, CM_Release, 0, 0);
 end;
 
+procedure TSvnCommitFrame.CommitMenuPopup(Sender: TObject);
+var
+  I, StartIdx: Integer;
+  MenuItem: TMenuItem;
+  SvnListViewItem: TSvnListViewItem;
+  SelectedChangeList: string;
+  SelectedChangeLists: TStringList;
+begin
+  if MoveToChangeList1.Visible then
+  begin
+    while MoveToChangeList1.Count > 0 do
+      MoveToChangeList1.Delete(0);
+
+    MenuItem := TMenuItem.Create(MoveToChangeList1);
+    MenuItem.Caption := sAddNewChangeList;
+    MenuItem.OnClick := AddToNewChangeListClick;
+    MenuItem.Tag := cTagNewChangeList;
+    MoveToChangeList1.Add(MenuItem);
+
+    //check if all selected items have the same changelist to hide it's menu item
+    SelectedChangeLists := TStringList.Create;
+    try
+      SelectedChangeLists.Sorted := True;
+      SelectedChangeLists.Duplicates := dupIgnore;
+      StartIdx := Files.Selected.Index;
+      for I := StartIdx to Files.Items.Count - 1 do
+        if Files.Items[I].Selected then
+        begin
+          SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+          if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
+            SelectedChangeLists.Add(SvnListViewItem.ChangeList);
+        end;
+      if SelectedChangeLists.Count = 1 then
+        SelectedChangeList := SelectedChangeLists[0]
+      else
+        SelectedChangeList := '';
+    finally
+      SelectedChangeLists.Free;
+    end;
+
+    if SelectedChangeList <> cIgnoreOnCommitChangeList then
+    begin
+      MenuItem := TMenuItem.Create(MoveToChangeList1);
+      MenuItem.Caption := '-';
+      MoveToChangeList1.Add(MenuItem);
+
+      MenuItem := TMenuItem.Create(MoveToChangeList1);
+      MenuItem.Caption := cIgnoreOnCommitChangeList;
+      MenuItem.OnClick := AddToNewChangeListClick;
+      MenuItem.Tag := cTagIgnoreChangeList;
+      MoveToChangeList1.Add(MenuItem);
+    end;
+
+    if (FChangesLists.Count > 1) or
+      ((FChangesLists.Count = 1) and (FChangesLists[0] <> SelectedChangeList)) then
+    begin
+      MenuItem := TMenuItem.Create(MoveToChangeList1);
+      MenuItem.Caption := '-';
+      MoveToChangeList1.Add(MenuItem);
+      for I := 0 to FChangesLists.Count - 1 do
+        if FChangesLists[I] <> SelectedChangeList then
+        begin
+          MenuItem := TMenuItem.Create(MoveToChangeList1);
+          MenuItem.Caption := FChangesLists[I];
+          MenuItem.OnClick := AddToNewChangeListClick;
+          MenuItem.Tag := I;
+          MoveToChangeList1.Add(MenuItem);
+        end;
+    end;
+  end;
+end;
+
 constructor TSvnCommitFrame.Create(AOwner: TComponent);
 begin
   inherited;
@@ -413,11 +551,15 @@ begin
   FExecutingCheckAllClick := False;
   FExecutingRefresh := False;
   FExecutingUnversionedParentCheck := False;
+  FChangesLists := TStringList.Create;
+  FChangesLists.Sorted := True;
+  FChangesListIgnoreOnCommitGroupID := -1;
   FNoFiles := False;
 end;
 
 destructor TSvnCommitFrame.Destroy;
 begin
+  FChangesLists.Free;
   FRefreshItemList.Free;
   FIndexList.Free;
   FItemList.Free;
@@ -439,7 +581,7 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded])
+        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded, svnWcStatusNormal])
           and not SvnListViewItem.Directory then
         begin
           DiffState := True;
@@ -464,7 +606,7 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded])
+        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded, svnWcStatusNormal])
           and not SvnListViewItem.Directory then
           DiffCallBack(SvnListViewItem.FPathName);
       end;
@@ -497,11 +639,15 @@ begin
           FIndexList.Clear;
           FItemList.Clear;
           Files.Items.Clear;
+          Files.Groups.Clear;
+          Files.GroupView := False;
+          FChangesLists.Clear;
+          FChangesListIgnoreOnCommitGroupID := -1;
           for I := 0 to FRefreshItemList.Count - 1 do
           begin
             SvnListViewItem := FRefreshItemList[I];
             Add(TSvnListViewItem.Create(SvnListViewItem.PathName, SvnListViewItem.TextStatus,
-              SvnListViewItem.Directory, SvnListViewItem.Copied));
+              SvnListViewItem.Directory, SvnListViewItem.Copied, SvnListViewItem.ChangeList));
           end;
           for I := 0 to Files.Items.Count - 1 do
           begin
@@ -642,6 +788,13 @@ procedure TSvnCommitFrame.FilesItemChecked(Sender: TObject; Item: TListItem);
     end;
   end;
 
+  function GetNormalizedCheckState(AItem: TListItem): Boolean;
+  begin
+    Result := AItem.Checked;
+    if (FChangesListIgnoreOnCommitGroupID <> -1) and (AItem.GroupID = FChangesListIgnoreOnCommitGroupID) then
+      Result := not Result;
+  end;
+
 var
   I: Integer;
 begin
@@ -659,19 +812,19 @@ begin
         FExecutingUnversionedParentCheck := False;
       end;
     end;
-  for I := 0 to Files.Items.Count - 1 do
-    if Files.Items[I].Checked <> Item.Checked then
-    begin
-      CheckAll.State := cbGrayed;
+    for I := 0 to Files.Items.Count - 1 do
+      if GetNormalizedCheckState(Files.Items[I]) <> GetNormalizedCheckState(Item) then
+      begin
+        CheckAll.State := cbGrayed;
         UpdateCommitButton;
-      Exit;
-    end;
-  if Item.Checked then
-    CheckAll.State := cbChecked
-  else
-    CheckAll.State := cbUnChecked;
-  UpdateCommitButton;
-end;
+        Exit;
+      end;
+    if GetNormalizedCheckState(Item) then
+      CheckAll.State := cbChecked
+    else
+      CheckAll.State := cbUnChecked;
+    UpdateCommitButton;
+  end;
 end;
 
 procedure TSvnCommitFrame.FilesKeyDown(Sender: TObject; var Key: Word;
@@ -690,6 +843,97 @@ begin
     if SameText(FItemList[I].PathName, FileName) then
       Exit;
   Result := False;
+end;
+
+function TSvnCommitFrame.GetGroupID(const AChangeList: string): Integer;
+
+  function AddGroup(const AChangeList: string): Integer;
+  var
+    I, J, StartIndex, EndIndex: Integer;
+    ListGroup, ListI, ListJ: TListGroup;
+    IndexI, IndexJ: Integer;
+  begin
+    ListGroup := Files.Groups.Add;
+    ListGroup.GroupID := Files.Groups.NextGroupID;
+    ListGroup.Header := AChangeList;
+    //sort groups - order is sNoChangeList, items sorted by name, cIgnoreOnCommitChangeList
+    if Files.Groups.Count > 1 then
+    begin
+      if AChangeList = sNoChangeList then
+        ListGroup.Index := 0
+      else
+      if AChangeList = cIgnoreOnCommitChangeList then
+        ListGroup.Index := Files.Groups.Count - 1
+      else
+      begin
+        StartIndex := 0;
+        if Files.Groups[StartIndex].Header = sNoChangeList then
+          Inc(StartIndex);
+        EndIndex := Files.Groups.Count - 1;
+        if Files.Groups[EndIndex].Header = cIgnoreOnCommitChangeList then
+          Dec(EndIndex);
+        if EndIndex > StartIndex then
+        begin
+          //bubble sort (very likely the amount of groups is very low)
+          for I := StartIndex to EndIndex - 1 do
+            for J := I + 1 to EndIndex do
+              if CompareStr(Files.Groups[I].Header, Files.Groups[J].Header) > 0 then
+              begin
+                ListI := Files.Groups[I];
+                ListJ := Files.Groups[J];
+                IndexI := ListI.Index;
+                IndexJ := ListJ.Index;
+                ListI.Index := IndexJ;
+                ListJ.Index := IndexI;
+              end;
+        end;
+      end;
+    end;
+    Result := ListGroup.GroupID;
+    if (AChangeList <> sNoChangeList) and (AChangeList <> cIgnoreOnCommitChangeList) then
+      FChangesLists.Add(AChangeList);
+    if AChangeList = cIgnoreOnCommitChangeList then
+      FChangesListIgnoreOnCommitGroupID := Result;
+  end;
+
+var
+  I, GroupID: Integer;
+  ChangeList: string;
+  FoundNoGroup: Boolean;
+begin
+  Result := -1;
+  ChangeList := AChangeList;
+  if Files.GroupView and (ChangeList = '') then
+    ChangeList := sNoChangeList;
+  if ChangeList <> '' then
+  begin
+    for I := 0 to Files.Groups.Count - 1 do
+      if Files.Groups[I].Header = ChangeList then
+      begin
+        Result := Files.Groups[I].GroupID;
+        Break;
+      end;
+    if Result = -1 then
+      Result := AddGroup(ChangeList);
+    if not Files.GroupView then
+    begin
+      Files.GroupView := True;
+      FoundNoGroup := False;
+      for I := 0 to Files.Items.Count - 2 do
+        if Files.Items[I].GroupID = -1 then
+        begin
+          FoundNoGroup := True;
+          Break;
+        end;
+      if FoundNoGroup then
+      begin
+        GroupID := AddGroup(sNoChangeList);
+        for I := 0 to Files.Items.Count - 2 do
+          if Files.Items[I].GroupID = -1 then
+            Files.Items[I].GroupID := GroupID;
+      end;
+    end;
+  end;
 end;
 
 function TSvnCommitFrame.GetSvnEditState: TSvnEditState;
@@ -737,7 +981,7 @@ begin
           except
             // If an error occures renaming the file then it is ok to ignore it.
           end;
-          SvnListViewItem := TSvnListViewItem.Create('', svnWcStatusNormal, False, False);
+          SvnListViewItem := TSvnListViewItem.Create('', svnWcStatusNormal, False, False, '');
           try
             GetFileStatusCallBack(MissingList[I], SvnListViewItem);
             if SvnListViewItem.FTextStatus <> svnWcStatusMissing then
@@ -788,6 +1032,36 @@ begin
   finally
     LowerPanel.OnResize := LowerPanelResize;
   end;
+end;
+
+procedure TSvnCommitFrame.MoveToChangeListActionExecute(Sender: TObject);
+begin
+//dummy Execute implementation to make sure that the action is enabled
+end;
+
+procedure TSvnCommitFrame.MoveToChangeListActionUpdate(Sender: TObject);
+var
+  I, StartIdx: Integer;
+  SvnListViewItem: TSvnListViewItem;
+  VisibleState: Boolean;
+begin
+  VisibleState := Assigned(FAddToChangeListCallBack);
+  if VisibleState and (Files.SelCount > 0) then
+  begin
+    VisibleState := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if not (SvnListViewItem.Directory or (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned])) then
+        begin
+          VisibleState := True;
+          Break;
+        end;
+      end;
+  end;
+  MoveToChangeListAction.Visible := VisibleState;
 end;
 
 procedure TSvnCommitFrame.ResizeStuff;
@@ -907,6 +1181,10 @@ begin
     try
       FNoFiles := False;
       Files.Clear;
+      Files.Groups.Clear;
+      Files.GroupView := False;
+      FChangesLists.Clear;
+      FChangesListIgnoreOnCommitGroupID := -1;
       FIndexList.Clear;
       for I := 0 to FItemList.Count - 1 do
         UpdateListView(FItemList[I], I);
@@ -939,6 +1217,58 @@ end;
 procedure TSvnCommitFrame.RefreshAdd(const SvnListItem: TSvnListViewItem);
 begin
   FRefreshItemList.Add(SvnListItem);
+end;
+
+procedure TSvnCommitFrame.RemoveChangeListActionExecute(Sender: TObject);
+var
+  I, StartIdx: Integer;
+  SvnListViewItem: TSvnListViewItem;
+  ModifiedChangeLists: Boolean;
+begin
+  if Files.SelCount > 0 then
+  begin
+    ModifiedChangeLists := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if SvnListViewItem.ChangeList <> '' then
+          if FRemoveFromChangeListCallBack(SvnListViewItem.PathName) then
+          begin
+            SvnListViewItem.FChangeList := '';
+            SvnListViewItem.Visible := not (SvnListViewItem.TextStatus in [svnWcStatusNone, svnWcStatusUnversioned]);
+            ModifiedChangeLists := True;
+          end;
+      end;
+    if ModifiedChangeLists then
+      RebuildList;
+  end;
+end;
+
+procedure TSvnCommitFrame.RemoveChangeListActionUpdate(Sender: TObject);
+var
+  I, StartIdx: Integer;
+  SvnListViewItem: TSvnListViewItem;
+  VisibleState: Boolean;
+begin
+  VisibleState := Assigned(FRemoveFromChangeListCallBack);
+  if VisibleState and (Files.SelCount > 0) then
+  begin
+    VisibleState := False;
+    StartIdx := Files.Selected.Index;
+    for I := StartIdx to Files.Items.Count - 1 do
+      if Files.Items[I].Selected then
+      begin
+        SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
+        if SvnListViewItem.ChangeList <> '' then
+        begin
+          VisibleState := True;
+          Break;
+        end;
+      end;
+  end;
+  RemoveChangeListAction.Visible := VisibleState;
 end;
 
 procedure TSvnCommitFrame.ResolveActionExecute(Sender: TObject);
@@ -1043,7 +1373,7 @@ begin
       for I := 0 to Files.Items.Count - 1 do
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if SvnListViewItem.Visible and (SvnListViewItem.TextStatus <> svnWcStatusUnversioned) then
+        if SvnListViewItem.Visible and (not (SvnListViewItem.TextStatus in [svnWcStatusUnversioned, svnWcStatusNormal])) then
         begin
           if SvnListViewItem.Directory then
             SvnCommitData := SvnRoot.AddDir(SvnListViewItem.PathName).Data
@@ -1139,8 +1469,10 @@ begin
             UpdateList := True;
             SvnListViewItem := ItemsToRevert[I].ListItem;
             SvnListViewItem.FTextStatus := NewState;
-            SvnListViewItem.Visible := not (NewState in [svnWcStatusNone, svnWcStatusNormal]);
-            SvnListViewItem.Checked := False;
+            SvnListViewItem.Visible := (not (NewState in [svnWcStatusNone, svnWcStatusNormal]))
+              or (SvnListViewItem.ChangeList <> '');
+            if SvnListViewItem.ChangeList = '' then
+              SvnListViewItem.Checked := False;
           end;
         if UpdateList then
         begin
@@ -1170,7 +1502,7 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if (SvnListViewItem.FTextStatus <> svnWcStatusUnversioned)
+        if (not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusNormal]))
           and ((not SvnListViewItem.Directory) or (SvnListViewItem.FTextStatus = svnWcStatusAdded)) then
         begin
           RevertState := True;
@@ -1245,6 +1577,9 @@ begin
     ListItem.SubItems.Add(ExtractFilePath(SvnListItem.PathName));
     ListItem.SubItems.Add(ExtractFileExt(SvnListItem.PathName));
     ListItem.SubItems.Add(StatusKindStrEx(SvnListItem.TextStatus, SvnListItem.Copied));
+    ListItem.GroupID := GetGroupID(SvnListItem.ChangeList);
+    if not CheckedState then //workaround for correct CheckAll state
+      ListItem.Checked := True;
     ListItem.Checked := CheckedState;
     ListItem.ImageIndex := SvnImageModule.GetShellImageIndex(SvnListItem.PathName);
     if FirstAdded then
@@ -1267,15 +1602,16 @@ end;
 { TSvnListViewItem }
 
 constructor TSvnListViewItem.Create(const APathName: string;
-  ATextStatus: TSvnWCStatusKind; ADirectory, ACopied: Boolean);
+  ATextStatus: TSvnWCStatusKind; ADirectory, ACopied: Boolean; AChangeList: string);
 begin
   inherited Create;
-  NewValues(APathName, ATextStatus, ADirectory, ACopied);
+  NewValues(APathName, ATextStatus, ADirectory, ACopied, AChangeList);
 end;
 
 procedure TSvnListViewItem.NewValues(const APathName: string;
-  ATextStatus: TSvnWCStatusKind; ADirectory, ACopied: Boolean);
+  ATextStatus: TSvnWCStatusKind; ADirectory, ACopied: Boolean; AChangeList: string);
 begin
+  FChangeList := AChangeList;
   FCopied := ACopied;
   FDirectory := ADirectory;
   FPathName := APathName;
@@ -1283,7 +1619,8 @@ begin
   FVisible := True;
   FChecked := (FTextStatus <> svnWcStatusUnversioned) and
     (FTextStatus <> svnWcStatusExternal) and (FTextStatus <> svnWcStatusMissing) and
-    (FTextStatus <> svnWcStatusConflicted) and (FTextStatus <> svnWcStatusIgnored);
+    (FTextStatus <> svnWcStatusConflicted) and (FTextStatus <> svnWcStatusIgnored) and
+    (AChangeList <> cIgnoreOnCommitChangeList);
 end;
 
 procedure TSvnListViewItem.SetTextStatus(Value: TSvnWCStatusKind);
@@ -1291,7 +1628,8 @@ begin
   FTextStatus := Value;
   FChecked := (FTextStatus <> svnWcStatusUnversioned) and
     (FTextStatus <> svnWcStatusExternal) and (FTextStatus <> svnWcStatusMissing) and
-    (FTextStatus <> svnWcStatusConflicted) and (FTextStatus <> svnWcStatusIgnored);
+    (FTextStatus <> svnWcStatusConflicted) and (FTextStatus <> svnWcStatusIgnored) and
+    (FChangeList <> cIgnoreOnCommitChangeList);
 end;
 
 { TSvnListViewItemPathComparer }

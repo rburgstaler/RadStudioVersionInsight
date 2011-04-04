@@ -178,6 +178,7 @@ object SvnCommitFrame: TSvnCommitFrame
     end
   end
   object CommitMenu: TPopupMenu
+    OnPopup = CommitMenuPopup
     Left = 529
     Top = 6
     object Difference1: TMenuItem
@@ -191,6 +192,12 @@ object SvnCommitFrame: TSvnCommitFrame
     end
     object ResolveAction1: TMenuItem
       Action = ResolveAction
+    end
+    object RemoveFromChangeList1: TMenuItem
+      Action = RemoveChangeListAction
+    end
+    object MoveToChangeList1: TMenuItem
+      Action = MoveToChangeListAction
     end
   end
   object CommitActions: TActionList
@@ -216,6 +223,18 @@ object SvnCommitFrame: TSvnCommitFrame
       Hint = 'Resolve Conflict'
       OnExecute = ResolveActionExecute
       OnUpdate = ResolveActionUpdate
+    end
+    object RemoveChangeListAction: TAction
+      Caption = 'Remove from changelist'
+      Hint = 'Remove from changelist'
+      OnExecute = RemoveChangeListActionExecute
+      OnUpdate = RemoveChangeListActionUpdate
+    end
+    object MoveToChangeListAction: TAction
+      Caption = 'Move to changelist'
+      Hint = 'Move to changelist'
+      OnExecute = MoveToChangeListActionExecute
+      OnUpdate = MoveToChangeListActionUpdate
     end
   end
 end

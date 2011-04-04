@@ -142,10 +142,12 @@ type
     function RevertCallBack(const FileName: string; ARecursive: Boolean; var ANewTextStatus: TSvnWCStatusKind): Boolean;
     procedure CloseCallBack;
     function AddCallBack(const FileName: string): Boolean;
+    function AddToChangeListCallBack(const FileName, AChangeList: string): Boolean;
     procedure ResolveCallBack(const FileName: string);
     procedure GetFileStatusCallBack(const FileName: string; var SvnListViewItem: TSvnListViewItem);
     procedure StatusCallBack(Sender: TObject; Item: TSvnItem; var Cancel: Boolean);
     procedure RefreshCallBack;
+    function RemoveFromChangeListCallBack(const FileName: string): Boolean;
     procedure ModificationRefreshCallBack(Sender: TObject; Item: TSvnItem;
       var Cancel: Boolean);
     { Misc }
@@ -264,6 +266,26 @@ begin
   Result := False;
   try
     FSvnClient.Add(FileName);
+    Result := True;
+  except
+    if not HandleSvnException(ExceptObject) then
+      raise;
+  end;
+end;
+
+function TCommit.AddToChangeListCallBack(const FileName, AChangeList: string): Boolean;
+var
+  PathNames: TStringList;
+begin
+  Result := False;
+  try
+    PathNames := TStringList.Create;
+    try
+      PathNames.Add(FileName);
+      FSvnClient.AddToChangeList(PathNames, AChangeList);
+    finally
+      PathNames.Free;
+    end;
     Result := True;
   except
     if not HandleSvnException(ExceptObject) then
@@ -464,7 +486,7 @@ begin
         UnversionedFilesAndDirectories);
       for I := 0 to UnversionedFilesAndDirectories.Count - 1 do
         FrameAdd(TSvnListViewItem.Create(UnversionedFilesAndDirectories[I],
-          svnWcStatusUnversioned, UnversionedFilesAndDirectories.Objects[I] <> nil, False));
+          svnWcStatusUnversioned, UnversionedFilesAndDirectories.Objects[I] <> nil, False, ''));
     end;
     for I := 0 to FilesAndDirectoriesInRepo.Count - 1 do
       FSvnClient.GetModifications(FilesAndDirectoriesInRepo[I], AModificationCallBack, True,
@@ -472,7 +494,7 @@ begin
     if (FRootType = rtExpicitFiles) and (AddedDirectories.Count > 0) then
     begin
       for I := 0 to AddedDirectories.Count - 1 do
-        FrameAdd(TSvnListViewItem.Create(AddedDirectories[I], svnWcStatusAdded, True, False));
+        FrameAdd(TSvnListViewItem.Create(AddedDirectories[I], svnWcStatusAdded, True, False, ''));
       FilesAndDirectoriesInRepo.AddStrings(AddedDirectories);
     end;
     AURL := FSvnClient.GetBaseURL(FilesAndDirectoriesInRepo, TempBasePath);
@@ -508,6 +530,8 @@ begin
       FSvnCommitFrame.GetFileStatusCallBack := GetFileStatusCallBack;
       FSvnCommitFrame.FileColorCallBack := FileColorCallBack;
       FSvnCommitFrame.RefreshCallBack := RefreshCallBack;
+      FSvnCommitFrame.AddToChangeListCallBack := AddToChangeListCallBack;
+      FSvnCommitFrame.RemoveFromChangeListCallBack := RemoveFromChangeListCallBack;
       if FFoundMissing then
         FSvnCommitFrame.HandleMissingFiles;
       RecentComments := TStringList.Create;
@@ -582,7 +606,7 @@ begin
   begin
     if Item.TextStatus = svnWcStatusMissing then
       FFoundMissing := True;
-    FSvnCommitFrame.Add(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied));
+    FSvnCommitFrame.Add(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied, Item.ChangeList));
   end;
 end;
 
@@ -593,7 +617,7 @@ begin
   begin
     if Item.TextStatus = svnWcStatusMissing then
       FFoundMissing := True;
-    FSvnCommitFrame.RefreshAdd(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied));
+    FSvnCommitFrame.RefreshAdd(TSvnListViewItem.Create(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied, Item.ChangeList));
   end;
 end;
 
@@ -604,6 +628,26 @@ begin
   PrepareFileList(FSvnCommitFrame.RefreshAdd, ModificationRefreshCallBack, Dummy);
   if FFoundMissing then
     FSvnCommitFrame.HandleMissingFiles(True);
+end;
+
+function TCommit.RemoveFromChangeListCallBack(const FileName: string): Boolean;
+var
+  PathNames: TStringList;
+begin
+  Result := False;
+  try
+    PathNames := TStringList.Create;
+    try
+      PathNames.Add(FileName);
+      FSvnClient.RemoveFromChangeList(PathNames);
+    finally
+      PathNames.Free;
+    end;
+    Result := True;
+  except
+    if not HandleSvnException(ExceptObject) then
+      raise;
+  end;
 end;
 
 procedure TCommit.ResolveCallBack(const FileName: string);
@@ -656,7 +700,7 @@ end;
 procedure TCommit.StatusCallBack(Sender: TObject; Item: TSvnItem;
   var Cancel: Boolean);
 begin
-  FStatusItem^.NewValues(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied);
+  FStatusItem^.NewValues(Item.PathName, Item.TextStatus, Item.IsDirectory, Item.Copied, Item.ChangeList);
 end;
 
 function DoDeleteCommitListLocalHistory(CommitList: TStringList): Integer;

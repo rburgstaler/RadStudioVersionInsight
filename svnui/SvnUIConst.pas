@@ -67,6 +67,10 @@ resourcestring
   sLoadRepoContentError = 'Cannot load repository content. Please check the entered URL.';
   sNoFiles = 'No file modifications found.  There is nothing to commit.';
   sBugIDCaption = 'Bug-ID';
+  sNoChangeList = '(no changelist)';
+  sAddNewChangeList = '<new changelist>';
+  sCreateChangeListCaption = 'Create Changelist';
+  sCreateChangeListPrompt = 'Enter a name for the changelist:';
 
 implementation
 
