@@ -125,7 +125,10 @@ type
     procedure CompareRevisionsActionExecute(Sender: TObject);
     procedure RevisionsDataStateChange(Sender: TObject; StartIndex,
       EndIndex: Integer; OldState, NewState: TItemStates);
+    procedure RevisionsCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   protected
+    FBaseRevision: string;
     FBugIDColumnNo: Integer;
     FCount: Integer;
     FDoingSearch: Boolean;
@@ -165,6 +168,7 @@ type
     procedure StartAsync;
     procedure NextCompleted;
     function PerformEditAction(AEditAction: TSvnEditAction): Boolean;
+    property BaseRevision: string read FBaseRevision write FBaseRevision;
     property FileColorCallBack: TFileColorCallBack read FFileColorCallBack write FFileColorCallBack;
     property LoadRevisionsCallBack: TLoadRevisionsCallBack read FLoadRevisionsCallBack write FLoadRevisionsCallBack;
     property ReverseMergeCallBack: TReverseMergeCallBack read FReverseMergeCallBack write FReverseMergeCallBack;
@@ -468,6 +472,26 @@ begin
 end;
 
 procedure TSvnLogFrame.AddRevisionToListView(ARevision: TRevision);
+
+  function RevisionStringWidth(const AStr: string): Integer;
+  var
+    Bitmap: TBitmap;
+  begin
+    if ARevision.FRevision <> FBaseRevision then
+      Result := Revisions.StringWidth(AStr)
+    else
+    begin
+      Bitmap := TBitmap.Create;
+      try
+        Bitmap.Canvas.Font.Assign(Revisions.Font);
+        Bitmap.Canvas.Font.Style := [fsBold];
+        Result := Bitmap.Canvas.TextWidth(AStr);
+      finally
+        Bitmap.Free;
+      end;
+    end;
+  end;
+
 var
   I, W, LastColumn: Integer;
   S: string;
@@ -483,9 +507,9 @@ begin
   for I := Low(FRevisionColumnWidths) to LastColumn do
   begin
     case I of
-      0: W := Revisions.StringWidth(ARevision.FRevision);
-      1: W := Revisions.StringWidth(ARevision.FAuthor);
-      2: W := Revisions.StringWidth(ARevision.FTime);
+      0: W := RevisionStringWidth(ARevision.FRevision);
+      1: W := RevisionStringWidth(ARevision.FAuthor);
+      2: W := RevisionStringWidth(ARevision.FTime);
       3: begin
            S := ARevision.FComment;
            //use only the first 259 chars for the column width, because a listview displays
@@ -494,9 +518,9 @@ begin
              S := Copy(S, 1, CBEMAXSTRLEN - 1);
            //the listview omitts line breaks and they would lead to a bigger string width
            S := StringReplace(S, #10, '', [rfReplaceAll]);
-           W := Revisions.StringWidth(S);
+           W := RevisionStringWidth(S);
          end;
-      4: W := Revisions.StringWidth(ARevision.FBugID);
+      4: W := RevisionStringWidth(ARevision.FBugID);
       else
         W := 0;
     end;
@@ -973,6 +997,15 @@ begin
     end;
     Search.RightButton.Visible := False;
   end;
+end;
+
+procedure TSvnLogFrame.RevisionsCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  if FVisibleRevisions[Item.Index].FRevision = FBaseRevision then
+    Sender.Canvas.Font.Style := [fsBold]
+  else
+    Sender.Canvas.Font.Style := [];
 end;
 
 procedure TSvnLogFrame.RevisionsData(Sender: TObject; Item: TListItem);

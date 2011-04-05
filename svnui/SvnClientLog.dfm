@@ -75,6 +75,7 @@ object SvnLogFrame: TSvnLogFrame
       PopupMenu = RevisionPopupMenu
       TabOrder = 0
       ViewStyle = vsReport
+      OnCustomDrawItem = RevisionsCustomDrawItem
       OnData = RevisionsData
       OnDataStateChange = RevisionsDataStateChange
       OnSelectItem = RevisionsSelectItem

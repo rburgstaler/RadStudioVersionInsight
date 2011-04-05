@@ -574,6 +574,7 @@ type
     function GetBaseURL(AFilesAndDirectories: TStringList; var ABasePath: string): string;
     procedure GetChangeLists(const PathName: string; ChangeLists: TStrings; SvnDepth: TSvnDepth = svnDepthInfinity; SubPool: PAprPool = nil);
     procedure GetExternals(const PathName: string; Externals: TStrings; Recurse: Boolean = True);
+    function GetMaxRevision(const PathName: string; SubPool: PAprPool = nil): Integer;
     function GetModifications(const PathName: string; Callback: TSvnStatusCallback = nil;
       Recurse: Boolean = True; Update: Boolean = False; IgnoreExternals: Boolean = False;
       RecurseUnversioned: Boolean = False; SubPool: PAprPool = nil): TSvnRevNum;
@@ -3507,6 +3508,23 @@ begin
     end;
   finally
     Externals.EndUpdate;
+  end;
+end;
+
+function TSvnClient.GetMaxRevision(const PathName: string; SubPool: PAprPool = nil): Integer;
+var
+  NewPool: Boolean;
+  Status: PSvnWcRevisionStatus;
+begin
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    SvnCheck(svn_wc_revision_status(Status, PAnsiChar(UTF8Encode(PathName)), nil, False, nil, nil, SubPool));
+    Result := Status^.max_rev;
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
   end;
 end;
 

@@ -312,6 +312,7 @@ begin
   Application.ProcessMessages;
   FSvnLogFrame.StartAsync;
   FSvnItem.AsyncReloadHistory;
+  FSvnLogFrame.BaseRevision := IntToStr(IDEClient.SvnClient.GetMaxRevision(FRootPath));
 end;
 
 function TLogView.GetBugTraqLogRegEx(APath: string): string;
