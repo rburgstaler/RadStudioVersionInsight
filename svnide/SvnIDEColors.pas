@@ -83,6 +83,7 @@ begin
       'A': Result := FColors[ssckAdded];
       'M': Result := FColors[ssckModified];
       'D', 'R': Result := FColors[ssckDeleted];
+      '-': Result := clGrayText;
       else
         Result := clNone;
     end;
