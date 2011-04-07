@@ -580,6 +580,8 @@ type
       RecurseUnversioned: Boolean = False; SubPool: PAprPool = nil): TSvnRevNum;
     procedure GetProps(Props: PAprArrayHeader; Strings: TStrings; SubPool: PAprPool = nil;
       Delimiter: Char = DefaultPropValDelimiter);
+    procedure GetRevisionProperties(const URL: string; Revision: TSvnRevNum; Properties: TStrings;
+      SubPool: PAprPool = nil; Delimiter: Char = DefaultPropValDelimiter);
     procedure GetFirstStatus(const PathName: string; var Status: TStatusEntry; SubPool: PAprPool = nil);
     procedure Import(const PathName, Url: string; SvnDepth: TSvnDepth = svnDepthInfinity);
     procedure Initialize(const AConfigDir: string = ''; Auth: PSvnAuthBaton = nil);
@@ -605,6 +607,7 @@ type
     procedure Resolved(const SvnPath: string; ConflictChoice: TSvnWcConflictChoice = SvnWcConflictChooseMerged;
       Recurse: Boolean = False; SubPool: PAprPool = nil);
     procedure SaveFileContentToStream(const PathName: string; Revision: TSvnRevNum; OutputStream: TStream; SubPool: PAprPool = nil);
+    procedure SetRevisionProperty(const URL: string; Revision: TSvnRevNum; PropName, PropValue: string; Force: Boolean = True; SubPool: PAprPool = nil);
     function StringListToAprArray(List: TStrings; SubPool: PAprPool = nil): PAprArrayHeader;
     function SvnPathToNativePath(const SvnPath: string; SubPool: PAprPool = nil): string;
     procedure Update(PathNames: TStrings; Callback: TSvnNotifyCallback = nil; Recurse: Boolean = True;
@@ -2993,6 +2996,46 @@ begin
   end;
 end;
 
+procedure TSvnClient.SetRevisionProperty(const URL: string;
+  Revision: TSvnRevNum; PropName, PropValue: string; Force: Boolean = True;
+  SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  SetRev: TSvnRevNum;
+  Rev: TSvnOptRevision;
+  SValue: string;
+  SvnValue: PSvnString;
+begin
+  if not Initialized then
+    Initialize;
+
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    FillChar(Rev, SizeOf(TSvnOptRevision), 0);
+    Rev.Kind := svnOptRevisionNumber;
+    Rev.Value.number := Revision;
+    SValue := PropValue;
+    if Pos(';', SValue) <> 0 then
+    begin
+      if SValue[Length(SValue)] <> ';' then
+        SValue := SValue + ';';
+      SValue := StringReplace(SValue, ';', SvnLineBreak, [rfReplaceAll, rfIgnoreCase]);
+    end;
+
+    SvnValue := svn_string_create(PAnsiChar(UTF8Encode(PropValue)), SubPool);
+    if svn_prop_needs_translation(PAnsiChar(UTF8Encode(PropName))) then
+      SvnCheck(svn_subst_translate_string(SvnValue, SvnValue, nil, SubPool));
+
+    SvnCheck(svn_client_revprop_set(PAnsiChar(UTF8Encode(PropName)), SvnValue,
+      PAnsiChar(UTF8Encode(URL)), @Rev, SetRev, Force, FCtx, SubPool));
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
 function TSvnClient.StringListToAprArray(List: TStrings;
   SubPool: PAprPool): PAprArrayHeader;
 var
@@ -3615,6 +3658,69 @@ begin
     end;
   finally
     Strings.EndUpdate;
+  end;
+end;
+
+procedure TSvnClient.GetRevisionProperties(const URL: string; Revision: TSvnRevNum;
+  Properties: TStrings; SubPool: PAprPool = nil; Delimiter: Char = DefaultPropValDelimiter);
+const
+  CRLF = #13#10;
+var
+  NewPool: Boolean;
+  SetRev: TSvnRevNum;
+  Rev: TSvnOptRevision;
+  props: PAprHash;
+  H: PAprHashIndex;
+  PName: PAnsiChar;
+  PValue: PSvnString;
+  J: Integer;
+  Name, Value: string;
+begin
+  Properties.BeginUpdate;
+  try
+    if not Initialized then
+      Initialize;
+
+    NewPool := not Assigned(SubPool);
+    if NewPool then
+      AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+    try
+      FillChar(Rev, SizeOf(TSvnOptRevision), 0);
+      Rev.Kind := svnOptRevisionNumber;
+      Rev.Value.number := Revision;
+      SvnCheck(svn_client_revprop_list(props, PAnsiChar(UTF8Encode(URL)), @Rev, SetRev, FCtx, SubPool));
+
+      H := apr_hash_first(SubPool, props);
+      while Assigned(H) do
+      begin
+        apr_hash_this(H, @PName, 0, @PValue);
+
+        // special Subversion properties, stored as UTF8
+        if svn_prop_needs_translation(PName) or // svn:
+          (StrLComp(PName, 'bugtraq:', 8) = 0) or (StrLComp(PName, 'tsvn:', 5) = 0) then // TortoiseSVN
+          SvnCheck(svn_subst_detranslate_string(PValue, PValue, False, SubPool));
+
+        SetString(Name, PName, StrLen(PName));
+        SetString(Value, PValue^.data, StrLen(PValue^.data));
+
+        Value := StringReplace(Value, CRLF, Delimiter, [rfReplaceAll, rfIgnoreCase]);
+        if (Value <> '') and (Value[Length(Value)] = Delimiter) then
+          Delete(Value, Length(Value), 1);
+
+        J := Properties.IndexOfName(Name);
+        if J = -1 then
+          Properties.Add(Format('%s=%s', [Name, Value]))
+        else
+          Properties.ValueFromIndex[J] := Properties.ValueFromIndex[J] + Delimiter + Value;
+
+        H := apr_hash_next(H);
+      end;
+    finally
+      if NewPool then
+        apr_pool_destroy(SubPool);
+    end;
+  finally
+    Properties.EndUpdate;
   end;
 end;
 
