@@ -128,6 +128,7 @@ type
     procedure ReverseMergeCallBack(const APathName: string; ARevision1, ARevision2: Integer);
     procedure CompareRevisionCallBack(AFileList: TStringList; ARevision1, ARevision2: Integer);
     procedure SaveRevisionCallBack(AFileList: TStringList; ARevision: Integer; const ADestPath: string);
+    function UpdateLogMessageCallBack(ARevision: Integer; const ALogMessage: string): Boolean;
     { Misc }
     function GetBugTraqLogRegEx(APath: string): string;
   public
@@ -296,6 +297,7 @@ begin
   FSvnLogFrame.ReverseMergeCallBack := ReverseMergeCallBack;
   FSvnLogFrame.CompareRevisionCallBack := CompareRevisionCallBack;
   FSvnLogFrame.SaveRevisionCallBack := SaveRevisionCallBack;
+  FSvnLogFrame.UpdateLogMessageCallBack := UpdateLogMessageCallBack;
   FSvnLogFrame.RootPath := ExcludeTrailingPathDelimiter(FRootPath);
   URL := IDEClient.SvnClient.FindRepository(FRootPath);
   RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
@@ -472,6 +474,22 @@ begin
     end;
     FFirst := LastNewIndex + 1;
     Application.ProcessMessages;
+  end;
+end;
+
+function TLogView.UpdateLogMessageCallBack(ARevision: Integer; const ALogMessage: string): Boolean;
+var
+  URL, RootURL: string;
+begin
+  Result := False;
+  try
+    URL := IDEClient.SvnClient.FindRepository(FRootPath);
+    RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
+    IDEClient.SvnClient.SetRevisionProperty(RootURL, ARevision, 'svn:log', ALogMessage);
+    Result := True;
+  except
+    if not HandleSvnException(ExceptObject) then
+      raise;
   end;
 end;
 

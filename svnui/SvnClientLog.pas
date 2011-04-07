@@ -62,6 +62,7 @@ type
   TReverseMergeCallBack = procedure(const APathName: string; ARevision1, ARevision2: Integer) of object;
   TCompareRevisionCallBack = procedure(AFileList: TStringList; ARevision1, ARevision2: Integer) of object;
   TSaveRevisionCallBack = procedure(AFileList: TStringList; ARevision: Integer; const ADestPath: string) of object;
+  TUpdateLogMessageCallBack = function(ARevision: Integer; const ALogMessage: string): Boolean of object;
 
   TSvnLogFrame = class(TFrame)
     Splitter1: TSplitter;
@@ -95,6 +96,8 @@ type
     Range: TToolButton;
     CompareRevisionsAction: TAction;
     CompareRevisions1: TMenuItem;
+    EditLogMessageRevisionAction: TAction;
+    EditLogMessage1: TMenuItem;
     procedure RevisionsSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure SearchKeyDown(Sender: TObject; var Key: Word;
@@ -127,6 +130,8 @@ type
       EndIndex: Integer; OldState, NewState: TItemStates);
     procedure RevisionsCustomDrawItem(Sender: TCustomListView; Item: TListItem;
       State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure EditLogMessageRevisionActionUpdate(Sender: TObject);
+    procedure EditLogMessageRevisionActionExecute(Sender: TObject);
   protected
     FBaseRevision: string;
     FBugIDColumnNo: Integer;
@@ -148,6 +153,7 @@ type
     FToRevision: Integer;
     FRevisionFiles: TStringList;
     FExecutingSelectAll: Boolean;
+    FUpdateLogMessageCallBack: TUpdateLogMessageCallBack;
     class var FUseCount: Integer;
     procedure AddRevisionToListView(ARevision: TRevision);
     procedure DoCancelSearch;
@@ -178,11 +184,12 @@ type
     property SaveRevisionCallBack: TSaveRevisionCallBack read FSaveRevisionCallBack write FSaveRevisionCallBack;
     property ShowBugIDColumn: Boolean read GetShowBugIDColumn write SetShowBugIDColumn;
     property SvnEditState: TSvnEditState read GetSvnEditState;
+    property UpdateLogMessageCallBack: TUpdateLogMessageCallBack read FUpdateLogMessageCallBack write FUpdateLogMessageCallBack;
   end;
 
 implementation
 
-uses SvnUIConst, SvnUIUtils, Clipbrd, FileCtrl, SvnClientRangeSelect;
+uses SvnUIConst, SvnUIUtils, Clipbrd, FileCtrl, SvnClientRangeSelect, SvnClientEditComment;
 
 {$R *.dfm}
 
@@ -729,6 +736,24 @@ begin
     end;
   end;
   Search.RightButton.Visible := True;
+end;
+
+procedure TSvnLogFrame.EditLogMessageRevisionActionExecute(Sender: TObject);
+var
+  Revision: TRevision;
+  S: string;
+begin
+  Revision := FVisibleRevisions[Revisions.Selected.Index];
+  S := Revision.FComment;
+  if EditComment(Self, S) then
+    if FUpdateLogMessageCallBack(StrToInt(Revision.FRevision), S) then
+      Revision.FComment := S;
+end;
+
+procedure TSvnLogFrame.EditLogMessageRevisionActionUpdate(Sender: TObject);
+begin
+  EditLogMessageRevisionAction.Visible := Assigned(FUpdateLogMessageCallBack) and (Revisions.SelCount = 1);
+  EditLogMessageRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
 procedure TSvnLogFrame.EndUpdate;

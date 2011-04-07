@@ -376,6 +376,11 @@ object SvnLogFrame: TSvnLogFrame
       OnExecute = CompareRevisionsActionExecute
       OnUpdate = CompareRevisionsActionUpdate
     end
+    object EditLogMessageRevisionAction: TAction
+      Caption = 'Edit comment'
+      OnExecute = EditLogMessageRevisionActionExecute
+      OnUpdate = EditLogMessageRevisionActionUpdate
+    end
   end
   object RevisionPopupMenu: TPopupMenu
     Left = 464
@@ -391,6 +396,9 @@ object SvnLogFrame: TSvnLogFrame
     end
     object RevertToThisRevision1: TMenuItem
       Action = ReverseMergeToRevisionAction
+    end
+    object EditLogMessage1: TMenuItem
+      Action = EditLogMessageRevisionAction
     end
   end
   object FilesPopupMenu: TPopupMenu

@@ -120,6 +120,9 @@
 			<DCCReference Include="SvnClientRangeSelect.pas">
 				<Form>SvnRangeSelectDialog</Form>
 			</DCCReference>
+			<DCCReference Include="SvnClientEditComment.pas">
+				<Form>EditCommentDialog</Form>
+			</DCCReference>
 			<None Include="RAD Studio Version Insight MPL License.txt"/>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>
