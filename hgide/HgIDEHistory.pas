@@ -334,9 +334,24 @@ begin
   Result := TStreamAdapter.Create(TStringStream.Create(Item.GetFile), soOwned);
 end;
 
+function TzToUTCDateTime(Value: TDateTime): TDateTime;
+var
+  TZ: TTimeZoneInformation;
+begin
+  Result := Value;
+  case GetTimeZoneInformation(TZ) of
+    TIME_ZONE_ID_DAYLIGHT:
+      Result := Result + (TZ.Bias + TZ.DaylightBias) / MinsPerDay;
+    TIME_ZONE_ID_STANDARD:
+      Result := Result + (TZ.Bias + TZ.StandardBias) / MinsPerDay;
+    TIME_ZONE_ID_UNKNOWN:
+      Result := Result + TZ.Bias / MinsPerDay;
+  end;
+end;
+
 function THgFileHistory.GetDate(Index: Integer): TDateTime;
 begin
-  Result := THgHistoryItem(FItem.HistoryItems[Index]).Date;
+  Result := TzToUTCDateTime(THgHistoryItem(FItem.HistoryItems[Index]).Date);
 end;
 
 function THgFileHistory.GetHintStr(Index: Integer): string;
