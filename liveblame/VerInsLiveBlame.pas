@@ -431,7 +431,7 @@ type
     FLoading: Boolean;
     FPaintBox: TLiveBlamePaintBox;
     FFirstRevisionIDStr: string;
-    FLatestRevisionContent: AnsiString;
+    FLatestRevisionContent: RawByteString;
   public
     constructor Create(const AFileName: string);
     destructor Destroy; override;
@@ -2341,8 +2341,8 @@ type
   TLineUpdateThread = class(TThread)
   private
     FFileName: string;
-    FLatestRevisionContent: string;
-    FEditorContent: string;
+    FLatestRevisionContent: RawByteString;
+    FEditorContent: RawByteString;
     FLines: TList<TJVCSLineHistoryRevision>;
     FOrgLines: TList<TJVCSLineHistoryRevision>;
     FFileRevision: TJVCSLineHistoryRevision;
@@ -2351,7 +2351,7 @@ type
   protected
     procedure Execute; override;
   public
-    constructor Create(AFileName: string; ALatestRevisionContent, AEditorContent: AnsiString; AOnFinished: TNotifyEvent;
+    constructor Create(AFileName: string; ALatestRevisionContent, AEditorContent: RawByteString; AOnFinished: TNotifyEvent;
       AOrgLines: TList<TJVCSLineHistoryRevision>; AFileRevision, ABufferRevision: TJVCSLineHistoryRevision;
       ADeletedLines2: TObjectList<TDeletedLines>);
     destructor Destroy; override;
@@ -2359,7 +2359,7 @@ type
 
 { TLineUpdateThread }
 
-constructor TLineUpdateThread.Create(AFileName: string; ALatestRevisionContent, AEditorContent: AnsiString; AOnFinished: TNotifyEvent;
+constructor TLineUpdateThread.Create(AFileName: string; ALatestRevisionContent, AEditorContent: RawByteString; AOnFinished: TNotifyEvent;
   AOrgLines: TList<TJVCSLineHistoryRevision>; AFileRevision, ABufferRevision: TJVCSLineHistoryRevision;
   ADeletedLines2: TObjectList<TDeletedLines>);
 begin
@@ -2388,6 +2388,7 @@ var
   TSL, TSL2, SL: TStringList;
   DT: TDateTime;
   DeletedLines1, DeletedLines2: TObjectList<TDeletedLines>;
+  MS: TMemoryStream;
 begin
   TSL := TStringList.Create;
   TSL2 := TStringList.Create;
@@ -2401,7 +2402,15 @@ begin
     {
     TSL2.LoadFromFile(ExtractFilePath(FFileName) + '.svn\text-base\' + ExtractFileName(FFileName) + '.svn-base');//TODO:remove
     }
-    TSL2.Text := UTF8ToString(FLatestRevisionContent);
+    //TSL2.Text := UTF8ToString(FLatestRevisionContent);
+    MS := TMemoryStream.Create;
+    try
+      MS.Write(FLatestRevisionContent[1], Length(FLatestRevisionContent));
+      MS.Position := 0;
+      TSL2.LoadFromStream(MS);
+    finally
+      MS.Free;
+    end;
     for I := 0 to TSL2.Count - 1 do
       if FOrgLines.Count > I then
         TSL2.Objects[I] := FOrgLines[I];
@@ -2439,7 +2448,7 @@ var
   //I, Idx: Integer;
   EC: IOTAEditorContent;
   C: IStream;
-  S: AnsiString;
+  S: RawByteString;
   R, W: Int64;
   MS: TMemoryStream;
   SA: TStreamAdapter;
