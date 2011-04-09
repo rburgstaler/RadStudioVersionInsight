@@ -935,9 +935,9 @@ begin
     CurrentDir := GetCurrentDir;
     try
       SetCurrentDir(ExtractFilePath(AFileList[0]));
-      CmdLine := HgExecutable + ' commit -m "' + AMessage + '"';
+      CmdLine := HgExecutable + ' commit -m ' + AnsiQuotedStr(AMessage, '"');
       if AUser <> '' then
-        CmdLine := CmdLine + ' -u "' + AUser + '"';
+        CmdLine := CmdLine + ' -u ' + AnsiQuotedStr(AUser, '"');
       for I := 0 to AFileList.Count - 1 do
         CmdLine := CmdLine + ' ' + QuoteFileName(AFileList[I]);
       Res := Execute(CmdLine, Output);
