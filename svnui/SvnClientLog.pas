@@ -735,7 +735,8 @@ begin
       Revisions.Items.EndUpdate
     end;
   end;
-  Search.RightButton.Visible := True;
+  //TODO: enable when valid X button images are assigned to Search.RightButton
+  //Search.RightButton.Visible := True;
 end;
 
 procedure TSvnLogFrame.EditLogMessageRevisionActionExecute(Sender: TObject);
