@@ -755,13 +755,20 @@ end;
 procedure TSvnLogFrame.EditLogMessageRevisionActionExecute(Sender: TObject);
 var
   Revision: TRevision;
-  S: string;
+  S, OldValue: string;
 begin
   Revision := FVisibleRevisions[Revisions.Selected.Index];
-  S := Revision.FComment;
-  if EditComment(Self, S) then
+  S := AdjustLineBreaks(Revision.FComment);
+  OldValue := S;
+  if EditComment(Self, S) and (S <> OldValue) then
     if FUpdateLogMessageCallBack(StrToInt(Revision.FRevision), S) then
+    begin
       Revision.FComment := S;
+      if Revisions.SelCount < 2 then
+        Comment.Lines.Text := Revisions.Selected.SubItems[2]
+      else
+        Comment.Clear;
+    end;
 end;
 
 procedure TSvnLogFrame.EditLogMessageRevisionActionUpdate(Sender: TObject);
