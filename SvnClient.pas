@@ -425,6 +425,47 @@ type
     property PathName: string read FPathName;
   end;
 
+  TSvnConfigItemState = (scisDefault, scisSet, scisRemove);
+
+  TSvnConfigString = class(TObject)
+  private
+    FState: TSvnConfigItemState;
+    FValue: string;
+    procedure SetValue(AValue: string);
+  public
+    constructor Create;
+    property State: TSvnConfigItemState read FState write FState;
+    property Value: string read FValue write SetValue;
+  end;
+
+  TSvnCustomConfig = class(TObject)
+  protected
+    procedure GetStringValue(AConfig: PSvnConfig; ASection, AOption: PAnsiChar; AConfigString: TSvnConfigString);
+    procedure SetStringValue(AConfig: PSvnConfig; ASection, AOption: PAnsiChar; AConfigString: TSvnConfigString);
+  public
+    procedure GetConfig(AConfig: PSvnConfig); virtual; abstract;
+    procedure SetConfig(AConfig: PSvnConfig); virtual; abstract;
+  end;
+
+  TSvnServerConfig = class(TSvnCustomConfig)
+  private
+    FHttpProxyExceptions: TSvnConfigString;
+    FHttpProxyHost: TSvnConfigString;
+    FHttpProxyPassword: TSvnConfigString;
+    FHttpProxyPort: TSvnConfigString;
+    FHttpProxyUsername: TSvnConfigString;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure GetConfig(AConfig: PSvnConfig); override;
+    procedure SetConfig(AConfig: PSvnConfig); override;
+    property HttpProxyExceptions: TSvnConfigString read FHttpProxyExceptions;
+    property HttpProxyHost: TSvnConfigString read FHttpProxyHost;
+    property HttpProxyPassword: TSvnConfigString read FHttpProxyPassword;
+    property HttpProxyPort: TSvnConfigString read FHttpProxyPort;
+    property HttpProxyUsername: TSvnConfigString read FHttpProxyUsername;
+  end;
+
   TSvnItemArray = array of TSvnItem;
 
   TSSLServerTrustFailures = set of (sslCertNotYetValid, sslCertExpired, sslCertHostNameMismatch,
@@ -511,6 +552,7 @@ type
     FPool: PAprPool; // main pool
     FPoolUtf8: PAprPool; // pool for UTF-8 routines
     FRecurseUnversioned: Boolean;
+    FServerConfig: TSvnServerConfig;
     FSvnClientLibLoaded: Boolean;
     FUserName: string;
 
@@ -622,6 +664,7 @@ type
     property Password: string read FPassword write FPassword;
     property Pool: PAprPool read FPool;
     property PoolUtf8: PAprPool read FPoolUtf8;
+    property ServerConfig: TSvnServerConfig read FServerConfig;
     property RecurseUnversioned: Boolean read FRecurseUnversioned;
     property UserName: string read FUserName write FUserName;
 
@@ -2595,6 +2638,84 @@ begin
   FSvnClient.List(FPathName, FDepth, FFetchLocks, FDirEntryFields, ListCallback, Revision);
 end;
 
+{ TSvnConfigString }
+
+constructor TSvnConfigString.Create;
+begin
+  inherited Create;
+  FState := scisDefault;
+end;
+
+procedure TSvnConfigString.SetValue(AValue: string);
+begin
+  FState := scisSet;
+  FValue := AValue;
+end;
+
+{ TSvnCustomConfig }
+
+procedure TSvnCustomConfig.GetStringValue(AConfig: PSvnConfig; ASection, AOption: PAnsiChar;
+  AConfigString: TSvnConfigString);
+var
+  OptionValue: PAnsiChar;
+begin
+  svn_config_get(AConfig, OptionValue, ASection, AOption, nil);
+  if Assigned(OptionValue) then
+    AConfigString.Value := UTF8ToString(OptionValue)
+  else
+    AConfigString.State := scisRemove;
+end;
+
+procedure TSvnCustomConfig.SetStringValue(AConfig: PSvnConfig; ASection, AOption: PAnsiChar;
+  AConfigString: TSvnConfigString);
+begin
+  if AConfigString.State = scisSet then
+    svn_config_set(AConfig, ASection, AOption, PAnsiChar(UTF8Encode(AConfigString.Value)))
+  else
+  if AConfigString.State = scisRemove then
+    svn_config_set(AConfig, ASection, AOption, nil);
+end;
+
+{ TSvnServerConfig }
+
+constructor TSvnServerConfig.Create;
+begin
+  inherited Create;
+  FHttpProxyExceptions := TSvnConfigString.Create;
+  FHttpProxyHost := TSvnConfigString.Create;
+  FHttpProxyPassword := TSvnConfigString.Create;
+  FHttpProxyPort := TSvnConfigString.Create;
+  FHttpProxyUsername := TSvnConfigString.Create;
+end;
+
+destructor TSvnServerConfig.Destroy;
+begin
+  FHttpProxyExceptions.Free;
+  FHttpProxyHost.Free;
+  FHttpProxyPassword.Free;
+  FHttpProxyPort.Free;
+  FHttpProxyUsername.Free;
+  inherited Destroy;
+end;
+
+procedure TSvnServerConfig.GetConfig(AConfig: PSvnConfig);
+begin
+  GetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_HOST, FHttpProxyHost);
+  GetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_PORT, FHttpProxyPort);
+  GetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_USERNAME, FHttpProxyUsername);
+  GetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_PASSWORD, FHttpProxyUsername);
+  GetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_EXCEPTIONS, FHttpProxyExceptions);
+end;
+
+procedure TSvnServerConfig.SetConfig(AConfig: PSvnConfig);
+begin
+  SetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_HOST, FHttpProxyHost);
+  SetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_PORT, FHttpProxyPort);
+  SetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_USERNAME, FHttpProxyUsername);
+  SetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_PASSWORD, FHttpProxyUsername);
+  SetStringValue(AConfig, SVN_CONFIG_SECTION_GLOBAL, SVN_CONFIG_OPTION_HTTP_PROXY_EXCEPTIONS, FHttpProxyExceptions);
+end;
+
 type
   TSvnClientManager = class(TObject)
   private
@@ -2962,6 +3083,7 @@ begin
   FUserName := '';
   FPassword := '';
   FLastCommitInfoRevision := SVN_INVALID_REVNUM;
+  FServerConfig := TSvnServerConfig.Create;
 end;
 
 procedure TSvnClient.SaveFileContentToStream(const PathName: string; Revision: TSvnRevNum;
@@ -3078,6 +3200,7 @@ end;
 
 destructor TSvnClient.Destroy;
 begin
+  FServerConfig.Free;
   Finalize;
   inherited Destroy;
 end;
@@ -3858,6 +3981,9 @@ begin
         svn_auth_set_parameter(Auth, SVN_AUTH_PARAM_DEFAULT_USERNAME, PAnsiChar(UTF8Encode(FUserName)));
       if FPassword <> '' then
         svn_auth_set_parameter(Auth, SVN_AUTH_PARAM_DEFAULT_PASSWORD, PAnsiChar(UTF8Encode(FPassword)));
+
+      SvnConfig := apr_hash_get(FCtx^.config, PAnsiChar(SVN_CONFIG_CATEGORY_SERVERS), APR_HASH_KEY_STRING);
+      FServerConfig.SetConfig(SvnConfig);
     except
       apr_pool_destroy(FPool);
       FPool := nil;
