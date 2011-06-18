@@ -135,6 +135,7 @@ type
   protected
     FBaseRevision: string;
     FBugIDColumnNo: Integer;
+    FColumnDataMapping: array [0..4] of Integer;
     FCount: Integer;
     FDoingSearch: Boolean;
     FFileColorCallBack: TFileColorCallBack;
@@ -630,6 +631,7 @@ end;
 
 procedure TSvnLogFrame.SetShowBugIDColumn(const Value: Boolean);
 var
+  I: Integer;
   BugIDColumn: TListColumn;
 begin
   if (FBugIDColumnNo <> -1) <> Value then
@@ -642,12 +644,19 @@ begin
       BugIDColumn.Width := -2;
       FRevisionColumns[4] := BugIDColumn;
       InitRevisionColumnWidths;
+      for I := 0 to 2 do
+        FColumnDataMapping[I] := I;
+      FColumnDataMapping[3] := 4;
+      FColumnDataMapping[4] := 3;
     end
     else
     begin
       FRevisionColumns[4] := nil;
       Revisions.Columns.Delete(FBugIDColumnNo);
       FBugIDColumnNo := -1;
+      for I := 0 to 3 do
+        FColumnDataMapping[I] := I;
+      FColumnDataMapping[4] := -1;
     end;
   end;
 end;
@@ -670,8 +679,12 @@ begin
   FBugIDColumnNo := -1;
   Assert(Revisions.Columns.Count = 4);
   for I := 0 to 3 do
+  begin
     FRevisionColumns[I] := Revisions.Columns[I];
+    FColumnDataMapping[I] := I;
+  end;
   FRevisionColumns[4] := nil;
+  FColumnDataMapping[4] := -1;
   InitRevisionColumnWidths;
 end;
 
@@ -809,7 +822,10 @@ end;
 
 function TSvnLogFrame.GetCommentColumn: Integer;
 begin
-  Result := 3;
+  if FBugIDColumnNo = -1 then
+    Result := 3
+  else
+    Result := 4;
 end;
 
 function TSvnLogFrame.GetShowBugIDColumn: Boolean;
@@ -879,7 +895,7 @@ end;
 
 function TSvnLogFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
 var
-  I, J: Integer;
+  I, J, ColumnDataIndex: Integer;
   S, ColumnContent: string;
   SL, FilesSL: TStringList;
   FirstItem: Boolean;
@@ -905,10 +921,11 @@ begin
             FirstItem := False;
             for J := 0 to Revisions.Columns.Count - 1 do
             begin
-              if J = 0 then
+              ColumnDataIndex := FColumnDataMapping[J];
+              if ColumnDataIndex = 0 then
                 ColumnContent := Revisions.Items[I].Caption
               else
-                ColumnContent := Revisions.Items[I].SubItems[J - 1];
+                ColumnContent := Revisions.Items[I].SubItems[ColumnDataIndex - 1];
               //the logmessage should start on it's own line and needs a line break correction
               if J = GetCommentColumn then
                 ColumnContent := #13#10 + AdjustLineBreaks(ColumnContent);
