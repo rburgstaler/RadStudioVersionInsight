@@ -3024,9 +3024,14 @@ begin
       SValue := StringReplace(SValue, ';', SvnLineBreak, [rfReplaceAll, rfIgnoreCase]);
     end;
 
-    SvnValue := svn_string_create(PAnsiChar(UTF8Encode(PropValue)), SubPool);
     if svn_prop_needs_translation(PAnsiChar(UTF8Encode(PropName))) then
-      SvnCheck(svn_subst_translate_string(SvnValue, SvnValue, nil, SubPool));
+    begin
+      Assert(SvnLineBreak = #10);
+      PropValue := AdjustLineBreaks(PropValue, tlbsLF);
+      SvnValue := svn_string_create(PAnsiChar(UTF8Encode(PropValue)), SubPool);
+    end
+    else
+      SvnValue := svn_string_create(PAnsiChar(UTF8Encode(PropValue)), SubPool);
 
     SvnCheck(svn_client_revprop_set(PAnsiChar(UTF8Encode(PropName)), SvnValue,
       PAnsiChar(UTF8Encode(URL)), @Rev, SetRev, Force, FCtx, SubPool));
