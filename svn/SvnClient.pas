@@ -4450,7 +4450,7 @@ var
   NewPool: Boolean;
   Targets: PAprArrayHeader;
   Revision: TSvnOptRevision;
-  LCtx: TSvnClientCtx;
+  PCtx: PSvnClientCtx;
   SaveCancel: TSvnCancelCallback;
 begin
   if not Assigned(PathNames) or (PathNames.Count = 0) then
@@ -4468,18 +4468,19 @@ begin
     Revision.Kind := svnOptRevisionHead;
     FCancelled := False;
     FNotifyCallback := Callback;
-    LCtx := FCtx^;
+    svn_client_create_context(PCtx, SubPool);
+    PCtx^ := FCtx^;
     if @ConflictCallBack <> nil then
     begin
-      LCtx.conflict_func := ConflictReceiver;
+      PCtx^.conflict_func := ConflictReceiver;
       FConflictCallback := ConflictCallBack;
-      LCtx.conflict_baton := Pointer(Self);
+      PCtx^.conflict_baton := Pointer(Self);
     end;
     SaveCancel := FOnCancel;
     try
       if Assigned(SvnCancelCallback) then
         FOnCancel := SvnCancelCallback;
-      SvnCheck(svn_client_update2(nil, Targets, @Revision, Recurse, IgnoreExternals, @LCtx, SubPool));
+      SvnCheck(svn_client_update2(nil, Targets, @Revision, Recurse, IgnoreExternals, PCtx, SubPool));
     finally
       FOnCancel := SaveCancel;
     end;
@@ -4525,7 +4526,7 @@ var
   StartRevision, EndRevision: TSvnOptRevision;
   Targets: PAprArrayHeader;
   Error: PSvnError;
-  LCtx: TSvnClientCtx;
+  PCtx: PSvnClientCtx;
 begin
   NameThreadForDebugging('DelphiSVN History Updater');
   FSvnItem.FHistory := TList.Create;
@@ -4551,11 +4552,12 @@ begin
         EndRevision.Value.number := FSvnItem.LogLastRev;
       Targets := FSvnItem.SvnClient.PathNamesToAprArray([FSvnItem.SvnPathName], SubPool);
       FSvnItem.SvnClient.FCancelled := False;
-      LCtx := FSvnItem.SvnClient.Ctx^;
-      LCtx.cancel_func := HistoryThreadCancel;
-      LCtx.cancel_baton := Pointer(Self);
+      svn_client_create_context(PCtx, SubPool);
+      PCtx^ := FSvnItem.SvnClient.Ctx^;
+      PCtx^.cancel_func := HistoryThreadCancel;
+      PCtx^.cancel_baton := Pointer(Self);
       Error := svn_client_log2(Targets, @StartRevision, @EndRevision, FSvnItem.LogLimit,
-        FSvnItem.IncludeChangeFiles, False, LogMessage, FSvnItem, @LCtx, SubPool);
+        FSvnItem.IncludeChangeFiles, False, LogMessage, FSvnItem, PCtx, SubPool);
       if not Terminated then
       begin
         if Assigned(Error) then
