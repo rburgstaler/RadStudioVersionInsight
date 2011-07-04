@@ -39,7 +39,7 @@ uses
   Dialogs, StdCtrls, ExtCtrls;
 
 type
-  TRecentCommentsDialog = class(TForm)
+  THgRecentCommentsDialog = class(TForm)
     Panel1: TPanel;
     Splitter1: TSplitter;
     Panel2: TPanel;
@@ -64,9 +64,9 @@ implementation
 
 function SelectRecentComments(const AOwner: TComponent; const Comments: TStringList): string;
 var
-  RecentCommentsDialog: TRecentCommentsDialog;
+  RecentCommentsDialog: THgRecentCommentsDialog;
 begin
-  RecentCommentsDialog := TRecentCommentsDialog.Create(AOwner);
+  RecentCommentsDialog := THgRecentCommentsDialog.Create(AOwner);
   RecentCommentsDialog.RecentComment.Items.Assign(Comments);
   if RecentCommentsDialog.ShowModal = mrOk then
     Result := RecentCommentsDialog.Comment.Text
@@ -74,14 +74,14 @@ begin
     Result := '';
 end;
 
-procedure TRecentCommentsDialog.FormCreate(Sender: TObject);
+procedure THgRecentCommentsDialog.FormCreate(Sender: TObject);
 begin
   Constraints.MinHeight := MulDiv(350, Screen.PixelsPerInch, 96);
   Constraints.MinWidth := MulDiv(450, Screen.PixelsPerInch, 96);
   RecentComment.ItemIndex := 0;
 end;
 
-procedure TRecentCommentsDialog.RecentCommentClick(Sender: TObject);
+procedure THgRecentCommentsDialog.RecentCommentClick(Sender: TObject);
 begin
   if RecentComment.ItemIndex <> -1 then
     Comment.Text := RecentComment.Items[RecentComment.ItemIndex]

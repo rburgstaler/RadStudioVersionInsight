@@ -1,4 +1,4 @@
-object RecentCommentsDialog: TRecentCommentsDialog
+object HgRecentCommentsDialog: THgRecentCommentsDialog
   Left = 0
   Top = 0
   HelpContext = 15207
