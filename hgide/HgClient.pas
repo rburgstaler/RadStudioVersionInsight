@@ -896,7 +896,7 @@ begin
         FStatus := gsAdded
       else
       if Pos('M ' + ExtractFileName(FFileName), Output) > 0 then
-        FStatus := gsAdded
+        FStatus := gsModified
       else
       if Pos('R ' + ExtractFileName(FFileName), Output) > 0 then
         FStatus := gsDeleted
