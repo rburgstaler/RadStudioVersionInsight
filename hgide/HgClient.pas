@@ -1137,7 +1137,7 @@ begin
     SetCurrentDir(ExtractFilePath(AFileName));
     CmdLine := FHgExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
     Res := Execute(CmdLine, Output);
-    Result := {(Res = 0) and }(Pos('abort: There is no Mercurial repository', Output) = 0);
+    Result := (Res = 0) and (Pos('abort: There is no Mercurial repository', Output) = 0);
   finally
     SetCurrentDir(CurrentDir);
   end;
