@@ -2025,7 +2025,10 @@ begin
     Visible := TSpeedButton(Sender).Down
   else
   if Sender is TAction then
+  begin
+    TAction(Sender).Checked := not TAction(Sender).Checked;
     Visible := TAction(Sender).Checked;
+  end;
   if Assigned(FLiveBlameData) then
   begin
     FLiveBlameData.FButtonDown := Visible;
@@ -2925,7 +2928,7 @@ begin
         Action.Hint := 'Show Blame';
         Action.ActionList := ActionLst;
         Action.OnExecute := EditorPanel.ShowHidePanel;
-        Action.AutoCheck := True;
+        Action.AutoCheck := False;//AutoCheck requires GroupIndex to be 0, it is mimicked in ShowHidePanel
         Action.GroupIndex := 123;
 
         SpeedButton := TSpeedButton.Create(BlameButtonPanel);
