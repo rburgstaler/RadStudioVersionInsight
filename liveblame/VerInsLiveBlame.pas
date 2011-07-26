@@ -3711,7 +3711,9 @@ procedure TLiveBlameEditorPanel.PaintColorBar(ACanvas: TCanvas; ARect: TRect;
 var
   HeightRatio: Single;
   TruncedHeightRatio: Integer;
-  I, Y, Y1, Y2, StartY, X1, X2: Integer;
+  I, Line, Y, Y1, Y2, StartY, X1, X2: Integer;
+  RepaintLocalChanges: Boolean;
+  LocalLines: TList<Integer>;
 begin
   if ALinesCount = 0 then
   begin
@@ -3744,16 +3746,39 @@ begin
     ACanvas.Pen.Style := psSolid;
     if Assigned(AOnGetLineColor) then
     begin
-      for I := 0 to Pred(ALinesCount) do
-      begin
-        ACanvas.Pen.Color := AOnGetLineColor(I, AColorIndex);
-        Y1 := StartY + Trunc(I * HeightRatio);
-        Y2 := Y1 + TruncedHeightRatio;
-        for Y := Y1 to Y2 do
+      RepaintLocalChanges := HeightRatio < 1.0;
+      LocalLines := TList<Integer>.Create;
+      try
+        for I := 0 to Pred(ALinesCount) do
         begin
-          ACanvas.MoveTo(X1, Y);
-          ACanvas.LineTo(X2, Y);
+          ACanvas.Pen.Color := AOnGetLineColor(I, AColorIndex);
+          Y1 := StartY + Trunc(I * HeightRatio);
+          Y2 := Y1 + TruncedHeightRatio;
+          for Y := Y1 to Y2 do
+          begin
+            ACanvas.MoveTo(X1, Y);
+            ACanvas.LineTo(X2, Y);
+          end;
+          if RepaintLocalChanges and (FLiveBlameData.FLines.Count > I) then
+            if (FLiveBlameData.FLines[I] = FLiveBlameData.FFileRevision) or
+              (FLiveBlameData.FLines[I] = FLiveBlameData.FBufferRevision) then
+            LocalLines.Add(I);
         end;
+        if LocalLines.Count > 0 then
+          for I := 0 to LocalLines.Count - 1 do
+          begin
+            Line := LocalLines[I];
+            ACanvas.Pen.Color := AOnGetLineColor(Line, AColorIndex);
+            Y1 := StartY + Trunc(Line * HeightRatio);
+            Y2 := Y1 + TruncedHeightRatio;
+            for Y := Y1 to Y2 do
+            begin
+              ACanvas.MoveTo(X1, Y);
+              ACanvas.LineTo(X2, Y);
+            end;
+          end;
+      finally
+        LocalLines.Free;
       end;
     end;
   end;
