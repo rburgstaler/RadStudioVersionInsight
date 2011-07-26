@@ -1896,10 +1896,43 @@ begin
 end;
 
 procedure TLiveBlameEditorPanel.HandleOnClick(Sender: TObject);
+var
+  PT: TPoint;
+  EditView: IOTAEditView;
+  EditPos: TOTAEditPos;
+  NewTopRow: Integer;
 begin
   if (Cursor = crHandPoint) and Assigned(FOnRevisionClick) and
     (FLastHighlightedRevisionIDStr <> '') then
-    FOnRevisionClick(Self, FLastHighlightedRevisionIDStr);
+    FOnRevisionClick(Self, FLastHighlightedRevisionIDStr)
+  else
+  if (Cursor <> crHandPoint) and (FSettings.ColorBarOrderList.Count > 0) and
+    GetCursorPos(PT) then
+  begin
+    PT := ScreenToClient(PT);
+    if PT.X < FSettings.ColorBarOrderList.Count * 8 then
+    begin
+      EditView := (BorlandIDEServices as IOTAEditorServices).TopView;
+      if Assigned(EditView) then
+      begin
+        EditPos := EditView.CursorPos;
+        EditPos.Line := (PT.Y * EditView.Position.LastRow) div FPaintBox.Height;
+        EditView.CursorPos := EditPos;
+        if (EditPos.Line < EditView.TopRow) or (EditPos.Line > EditView.BottomRow) then
+        begin
+          NewTopRow := EditPos.Line - (EditView.BottomRow - EditView.TopRow) div 2;
+          if NewTopRow < 1 then
+            NewTopRow := 1
+          else
+          if NewTopRow > EditView.Position.LastRow then
+            NewTopRow := EditView.Position.LastRow;
+          EditView.SetTopLeft(NewTopRow, 1);
+        end;
+        EditView.Paint;
+        FPaintBox.Invalidate;
+      end;
+    end;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.HandlePopupMenu(Sender: TObject);
