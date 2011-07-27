@@ -2137,6 +2137,7 @@ begin
           FLiveBlameData.FPaintBox := FPaintBox;
         end;
         FSpeedButton.Down := FLiveBlameData.FButtonDown;
+        TAction(FSpeedButton.Action).Checked := FLiveBlameData.FButtonDown;
         ModuleChanged := True;
       end;
     end;
