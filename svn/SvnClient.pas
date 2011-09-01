@@ -4024,7 +4024,7 @@ begin
     if not Result then
     begin
       case SvnError^.apr_err of
-        SVN_ERR_WC_NOT_DIRECTORY, SVN_ERR_UNVERSIONED_RESOURCE:
+        SVN_ERR_WC_NOT_DIRECTORY, SVN_ERR_WC_PATH_NOT_FOUND, SVN_ERR_UNVERSIONED_RESOURCE:
           svn_error_clear(SvnError);
         else
           RaiseSvnError(SvnError);
