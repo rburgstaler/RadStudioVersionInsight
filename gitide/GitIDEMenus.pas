@@ -44,7 +44,7 @@ procedure UnRegisterMenus;
 implementation
 
 uses
-  SysUtils, GitIDEConst;
+  SysUtils, GitIDEConst, GitIDECheckout;
 
 const
   sGitName = 'versioninsight.git';
@@ -97,13 +97,13 @@ end;
 
 function TGitNotifier.CheckoutProject(var ProjectName: string): Boolean;
 begin
-  Result := False;
+  Result := DoCheckOutProject(ProjectName);
 end;
 
 function TGitNotifier.CheckoutProjectWithConnection(var ProjectName: string;
   const Connection: string): Boolean;
 begin
-  Result := False;
+  Result := DoCheckOutProject(ProjectName, Connection);
 end;
 
 constructor TGitNotifier.Create(const GitIDEClient: TGitIDEClient);
