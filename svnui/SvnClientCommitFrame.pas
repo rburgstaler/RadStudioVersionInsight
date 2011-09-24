@@ -581,7 +581,7 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded, svnWcStatusNormal])
+        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded, svnWcStatusNormal, svnWcStatusDeleted])
           and not SvnListViewItem.Directory then
         begin
           DiffState := True;
@@ -606,7 +606,7 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded, svnWcStatusNormal])
+        if not (SvnListViewItem.FTextStatus in [svnWcStatusUnversioned, svnWcStatusAdded, svnWcStatusNormal, svnWcStatusDeleted])
           and not SvnListViewItem.Directory then
           DiffCallBack(SvnListViewItem.FPathName);
       end;
