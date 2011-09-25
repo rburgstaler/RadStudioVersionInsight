@@ -106,6 +106,7 @@ type
     RemoveFromChangeList1: TMenuItem;
     MoveToChangeListAction: TAction;
     MoveToChangeList1: TMenuItem;
+    SelCountTotalCount: TLabel;
 
     procedure CommitClick(Sender: TObject);
     procedure UnversionedFilesClick(Sender: TObject);
@@ -172,6 +173,7 @@ type
     procedure SetURL(const AValue: string);
     function StatusKindStrEx(Status: TSvnWCStatusKind; ACopied: Boolean): string;
     procedure UpdateCommitButton;
+    procedure UpdateCountLabel;
     procedure UpdateListView(const SvnListItem: TSvnListViewItem; ItemIndex: Integer);
     procedure ResizeStuff;
     procedure WndProc(var Message: TMessage); override;
@@ -416,6 +418,7 @@ begin
           Files.Items[I].Checked := Checked;
     end;
     UpdateCommitButton;
+    UpdateCountLabel;
   finally
     FExecutingCheckAllClick := False;
   end;
@@ -854,6 +857,7 @@ begin
       begin
         CheckAll.State := cbGrayed;
         UpdateCommitButton;
+        UpdateCountLabel;
         Exit;
       end;
     if GetNormalizedCheckState(Item) then
@@ -861,6 +865,7 @@ begin
     else
       CheckAll.State := cbUnChecked;
     UpdateCommitButton;
+    UpdateCountLabel;
   end;
 end;
 
@@ -1592,6 +1597,17 @@ begin
       Exit;
     end;
     Commit.Enabled := False;
+end;
+
+procedure TSvnCommitFrame.UpdateCountLabel;
+var
+  I, CheckedCount: Integer;
+begin
+  CheckedCount := 0;
+  for I := 0 to FIndexList.Count - 1 do
+    if FItemList[FIndexList[I]].Checked then
+      Inc(CheckedCount);
+  SelCountTotalCount.Caption := Format(sSelCountTotalCount, [CheckedCount, Files.Items.Count]);
 end;
 
 procedure TSvnCommitFrame.UpdateListView(const SvnListItem: TSvnListViewItem;
