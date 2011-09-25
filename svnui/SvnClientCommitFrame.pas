@@ -153,7 +153,7 @@ type
     FIndexList: TList<Integer>;
     FRefreshItemList: TObjectList<TSvnListViewItem>;
     FRemoveFromChangeListCallBack: TRemoveFromChangeListCallBack;
-    FSortColumn: Integer;
+    FSortColumns: array of Integer;
     FSortOrder: Boolean;
     FRecentComments: TStringList;
     FURL: string;
@@ -222,24 +222,32 @@ function ColumnSort(Item1, Item2: TListItem; Param: LParam): Integer; stdcall;
 var
   SvnCommitFrame: TSvnCommitFrame;
   S1, S2: string;
+  I, OrderColumn: Integer;
 begin
   SvnCommitFrame := TSvnCommitFrame(Param);
-  if SvnCommitFrame.FSortColumn = 0 then
+  Result := 0;
+  for I := Low(SvnCommitFrame.FSortColumns) to High(SvnCommitFrame.FSortColumns) do
   begin
-    S1 := AnsiLowerCase(Item1.Caption);
-    S2 := AnsiLowerCase(Item2.Caption);
-  end
-  else
-  begin
-    S1 := AnsiLowerCase(Item1.SubItems[SvnCommitFrame.FSortColumn - 1]);
-    S2 := AnsiLowerCase(Item2.SubItems[SvnCommitFrame.FSortColumn - 1]);
+    OrderColumn := SvnCommitFrame.FSortColumns[I];
+    if OrderColumn = 0 then
+    begin
+      S1 := AnsiLowerCase(Item1.Caption);
+      S2 := AnsiLowerCase(Item2.Caption);
+    end
+    else
+    begin
+      S1 := AnsiLowerCase(Item1.SubItems[OrderColumn - 1]);
+      S2 := AnsiLowerCase(Item2.SubItems[OrderColumn - 1]);
+    end;
+    if S1 = S2 then
+      Result := 0
+    else if (S1 < S2) xor SvnCommitFrame.FSortOrder then
+      Result := 1
+    else
+      Result := -1;
+    if Result <> 0 then
+      Break;
   end;
-  if S1 = S2 then
-    Result := 0
-  else if (S1 < S2) xor SvnCommitFrame.FSortOrder then
-    Result := 1
-  else
-    Result := -1;
 end;
 
 procedure TSvnCommitFrame.Add(const SvnListItem: TSvnListViewItem);
@@ -545,7 +553,8 @@ begin
   FItemList.OnNotify := Notify;
   FIndexList := TList<Integer>.Create;
   FRefreshItemList := TObjectList<TSvnListViewItem>.Create;
-  FSortColumn := 0;
+  SetLength(FSortColumns, 1);
+  FSortColumns[0] := 0;
   FSortOrder := True;
   FRecentComments := TStringList.Create;
   FExecutingCheckAllClick := False;
@@ -683,11 +692,39 @@ end;
 procedure TSvnCommitFrame.FilesColumnClick(Sender: TObject;
   Column: TListColumn);
 begin
-  if FSortColumn = Column.Index then
+  if (Length(FSortColumns) > 0) and (FSortColumns[0] = Column.Index) then
     FSortOrder := not FSortOrder
   else
   begin
-    FSortColumn := Column.Index;
+    case Column.Index of
+      0: begin
+           SetLength(FSortColumns, 1);
+           FSortColumns[0] := 0;//Name
+         end;
+      1: begin
+           SetLength(FSortColumns, 2);
+           FSortColumns[0] := 1;//Path
+           FSortColumns[1] := 0;//Name
+         end;
+      2: begin
+           SetLength(FSortColumns, 3);
+           FSortColumns[0] := 2;//Ext
+           FSortColumns[1] := 1;//Path
+           FSortColumns[2] := 0;//Name
+         end;
+      3: begin
+           SetLength(FSortColumns, 3);
+           FSortColumns[0] := 3;//Status
+           FSortColumns[1] := 1;//Path
+           FSortColumns[2] := 0;//Name
+         end;
+      else
+      begin
+        SetLength(FSortColumns, 1);
+        FSortColumns[0] := 0;//Name
+      end;
+    end;
+    FSortColumns[0] := Column.Index;
     FSortOrder := True;
   end;
   Files.CustomSort(@ColumnSort, LPARAM(Self));
