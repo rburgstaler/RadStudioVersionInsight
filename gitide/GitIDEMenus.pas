@@ -132,7 +132,7 @@ function RootDirectory(const GitClient: TGitClient; const Path: string): string;
 implementation
 
 uses
-  SysUtils, GitIDEConst, GitIDECommit, GitIDECheckout;
+  SysUtils, GitIDEConst, GitIDECommit, GitIDELog, GitIDECheckout;
 
 const
   sGitName = 'versioninsight.git';
@@ -176,7 +176,7 @@ var
   PMMExpicitFilesCommit, PMMFileCommit, PMMParentUpdate, PMMRootDirUpdate,
   PMMProjectDirUpdate, PMMExpicitFilesUpdate, PMMFileUpdate,
   PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
-  PMMParentLogHgMenu, PMMRootDirLogHgMenu, PMMProjectDirLogHgMenu,
+  PMMParentLogGitMenu, PMMRootDirLogGitMenu, PMMProjectDirLogGitMenu,
   PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu: IOTAProjectManagerMenu;
 
 function RootDirectory(const GitClient: TGitClient; const Path: string): string;
@@ -557,9 +557,9 @@ begin
     ProjectManagerMenuList.Add(PMMRootDirUpdate);
     ProjectManagerMenuList.Add(PMMProjectDirUpdate);
     ProjectManagerMenuList.Add(PMMExpicitFilesUpdate);
-    ProjectManagerMenuList.Add(PMMParentLogHgMenu);
-    ProjectManagerMenuList.Add(PMMRootDirLogHgMenu);
-    ProjectManagerMenuList.Add(PMMProjectDirLogHgMenu);
+    ProjectManagerMenuList.Add(PMMParentLogGitMenu);
+    ProjectManagerMenuList.Add(PMMRootDirLogGitMenu);
+    ProjectManagerMenuList.Add(PMMProjectDirLogGitMenu);
     ProjectManagerMenuList.Add(PMMParentCleanSvnMenu);
     ProjectManagerMenuList.Add(PMMRootDirCleanSvnMenu);
     ProjectManagerMenuList.Add(PMMProjectDirCleanSvnMenu);
@@ -596,10 +596,10 @@ begin
   PMMParentCleanSvnMenu := TParentCleanSvnMenu.Create;
   PMMRootDirCleanSvnMenu := TRootDirCleanSvnMenu.Create(ASvnIDEClient);
   PMMProjectDirCleanSvnMenu := TProjectDirCleanSvnMenu.Create(ASvnIDEClient);
+  }
   PMMParentLogGitMenu := TParentLogGitMenu.Create;
   PMMRootDirLogGitMenu := TRootDirLogGitMenu.Create(AGitIDEClient);
   PMMProjectDirLogGitMenu := TProjectDirLogGitMenu.Create(AGitIDEClient);
-  }
   {
   PMMParentRepo := TParentRepoSvnMenu.Create;
   PMMRootDirRepo := TRootDirRepoSvnMenu.Create(ASvnIDEClient);
@@ -625,9 +625,9 @@ begin
   PMMParentCleanSvnMenu := nil;
   PMMRootDirCleanSvnMenu := nil;
   PMMProjectDirCleanSvnMenu := nil;
-  PMMParentLogHgMenu := nil;
-  PMMRootDirLogHgMenu := nil;
-  PMMProjectDirLogHgMenu := nil;
+  PMMParentLogGitMenu := nil;
+  PMMRootDirLogGitMenu := nil;
+  PMMProjectDirLogGitMenu := nil;
   PMMParentRepo := nil;
   PMMRootDirRepo := nil;
   PMMProjectDirRepo := nil;

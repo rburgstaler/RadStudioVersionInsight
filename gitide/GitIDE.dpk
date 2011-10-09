@@ -51,7 +51,11 @@ contains
   GitIDEUtils in 'GitIDEUtils.pas',
   GitTree in 'GitTree.pas',
   GitUITypes in 'GitUITypes.pas',
-  GitUIUtils in 'GitUIUtils.pas';
+  GitUIUtils in 'GitUIUtils.pas',
+  GitIDELog in 'GitIDELog.pas',
+  GitClientLog in 'GitClientLog.pas' {GitLogFrame: TFrame},
+  GitIDETypes in 'GitIDETypes.pas',
+  GitClientProgress in 'GitClientProgress.pas' {GitProgressDialog};
 
 end.
 
