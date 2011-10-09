@@ -547,9 +547,10 @@ procedure THgNotifier.ProjectManagerMenu(const Project: IOTAProject;
   end;
 
 begin
-  ProjectManagerMenuList.Add(PMMSvnParent);
+  //ProjectManagerMenuList.Add(PMMSvnParent);//so far the file menu doesn't exist -> add root item only in the Project branch
   if ContainersProject then
   begin
+    ProjectManagerMenuList.Add(PMMSvnParent);
     ProjectManagerMenuList.Add(PMMParentCommit);
     ProjectManagerMenuList.Add(PMMRootDirCommit);
     ProjectManagerMenuList.Add(PMMProjectDirCommit);
