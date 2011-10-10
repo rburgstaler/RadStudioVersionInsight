@@ -74,7 +74,7 @@ type
   TFileColorCallBack = function(AItem: TSvnListViewItem): TColor of object;
   TRefreshCallBack = procedure of object;
 
-  TSvnCommitFrame = class(TFrame)
+  THgCommitFrame = class(TFrame)
     Label1: TLabel;
     Location: TLabel;
     Comment: TMemo;
@@ -98,6 +98,7 @@ type
     Add1: TMenuItem;
     ResolveAction: TAction;
     ResolveAction1: TMenuItem;
+    SelCountTotalCount: TLabel;
 
     procedure CommitClick(Sender: TObject);
     procedure UnversionedFilesClick(Sender: TObject);
@@ -139,7 +140,7 @@ type
     FItemList: TList<TSvnListViewItem>;
     FIndexList: TList<Integer>;
     FRefreshItemList: TObjectList<TSvnListViewItem>;
-    FSortColumn: Integer;
+    FSortColumns: array of Integer;
     FSortOrder: Boolean;
     FRecentComments: TStringList;
     FSupportsExternals: Boolean;
@@ -158,6 +159,7 @@ type
     procedure SetURL(const AValue: string);
     function StatusKindStrEx(Status: THgStatus; ACopied: Boolean): string;
     procedure UpdateCommitButton;
+    procedure UpdateCountLabel;
     procedure UpdateListView(const SvnListItem: TSvnListViewItem; ItemIndex: Integer);
     procedure ResizeStuff;
     procedure WndProc(var Message: TMessage); override;
@@ -201,29 +203,37 @@ type
 
 function ColumnSort(Item1, Item2: TListItem; Param: LParam): Integer; stdcall;
 var
-  SvnCommitFrame: TSvnCommitFrame;
+  SvnCommitFrame: THgCommitFrame;
   S1, S2: string;
+  I, OrderColumn: Integer;
 begin
-  SvnCommitFrame := TSvnCommitFrame(Param);
-  if SvnCommitFrame.FSortColumn = 0 then
+  SvnCommitFrame := THgCommitFrame(Param);
+  Result := 0;
+  for I := Low(SvnCommitFrame.FSortColumns) to High(SvnCommitFrame.FSortColumns) do
   begin
-    S1 := AnsiLowerCase(Item1.Caption);
-    S2 := AnsiLowerCase(Item2.Caption);
-  end
-  else
-  begin
-    S1 := AnsiLowerCase(Item1.SubItems[SvnCommitFrame.FSortColumn - 1]);
-    S2 := AnsiLowerCase(Item2.SubItems[SvnCommitFrame.FSortColumn - 1]);
+    OrderColumn := SvnCommitFrame.FSortColumns[I];
+    if OrderColumn = 0 then
+    begin
+      S1 := AnsiLowerCase(Item1.Caption);
+      S2 := AnsiLowerCase(Item2.Caption);
+    end
+    else
+    begin
+      S1 := AnsiLowerCase(Item1.SubItems[OrderColumn - 1]);
+      S2 := AnsiLowerCase(Item2.SubItems[OrderColumn - 1]);
+    end;
+    if S1 = S2 then
+      Result := 0
+    else if (S1 < S2) xor SvnCommitFrame.FSortOrder then
+      Result := 1
+    else
+      Result := -1;
+    if Result <> 0 then
+      Break;
   end;
-  if S1 = S2 then
-    Result := 0
-  else if (S1 < S2) xor SvnCommitFrame.FSortOrder then
-    Result := 1
-  else
-    Result := -1;
 end;
 
-procedure TSvnCommitFrame.Add(const SvnListItem: TSvnListViewItem);
+procedure THgCommitFrame.Add(const SvnListItem: TSvnListViewItem);
 var
   ItemIndex: Integer;
 begin
@@ -231,7 +241,7 @@ begin
   UpdateListView(SvnListItem, ItemIndex);
 end;
 
-procedure TSvnCommitFrame.AddActionExecute(Sender: TObject);
+procedure THgCommitFrame.AddActionExecute(Sender: TObject);
 
   function CheckAddParents(ASvnListViewItem: TSvnListViewItem): Boolean;
   var
@@ -308,7 +318,7 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.AddActionUpdate(Sender: TObject);
+procedure THgCommitFrame.AddActionUpdate(Sender: TObject);
 var
   I, StartIdx: Integer;
   AddState: Boolean;
@@ -330,12 +340,12 @@ begin
     AddAction.Visible := False;
 end;
 
-procedure TSvnCommitFrame.BeginUpdate;
+procedure THgCommitFrame.BeginUpdate;
 begin
   Files.Items.BeginUpdate;
 end;
 
-procedure TSvnCommitFrame.CheckAllClick(Sender: TObject);
+procedure THgCommitFrame.CheckAllClick(Sender: TObject);
 var
   I: Integer;
   Checked: Boolean;
@@ -349,28 +359,29 @@ begin
       Files.Items[I].Checked := Checked;
   end;
   UpdateCommitButton;
+    UpdateCountLabel;
   finally
     FExecutingCheckAllClick := False;
   end;
 end;
 
-procedure TSvnCommitFrame.CheckForNoFilesVisible;
+procedure THgCommitFrame.CheckForNoFilesVisible;
 begin
   FNoFiles := Files.Items.Count = 0;
 end;
 
-procedure TSvnCommitFrame.CMRelease(var Message: TMessage);
+procedure THgCommitFrame.CMRelease(var Message: TMessage);
 begin
   CloseCallBack;
 end;
 
-procedure TSvnCommitFrame.CommentChange(Sender: TObject);
+procedure THgCommitFrame.CommentChange(Sender: TObject);
 begin
   if not FAllowEmptyComment then
     UpdateCommitButton;
 end;
 
-procedure TSvnCommitFrame.CommitClick(Sender: TObject);
+procedure THgCommitFrame.CommitClick(Sender: TObject);
 var
   CommitList, AddList: TStringList;
   I, Idx: Integer;
@@ -413,14 +424,15 @@ begin
   PostMessage(Handle, CM_Release, 0, 0);
 end;
 
-constructor TSvnCommitFrame.Create(AOwner: TComponent);
+constructor THgCommitFrame.Create(AOwner: TComponent);
 begin
   inherited;
   FItemList := TList<TSvnListViewItem>.Create;
   FItemList.OnNotify := Notify;
   FIndexList := TList<Integer>.Create;
   FRefreshItemList := TObjectList<TSvnListViewItem>.Create;
-  FSortColumn := 0;
+  SetLength(FSortColumns, 1);
+  FSortColumns[0] := 0;
   FSortOrder := True;
   FRecentComments := TStringList.Create;
   FExecutingCheckAllClick := False;
@@ -431,7 +443,7 @@ begin
   FSupportsExternals := True;
 end;
 
-destructor TSvnCommitFrame.Destroy;
+destructor THgCommitFrame.Destroy;
 begin
   FRefreshItemList.Free;
   FIndexList.Free;
@@ -440,7 +452,7 @@ begin
   inherited;
 end;
 
-procedure TSvnCommitFrame.DiffActionUpdate(Sender: TObject);
+procedure THgCommitFrame.DiffActionUpdate(Sender: TObject);
 var
   I, StartIdx: Integer;
   DiffState: Boolean;
@@ -454,7 +466,7 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.FTextStatus in [gsUnversioned, gsAdded])
+        if not (SvnListViewItem.FTextStatus in [gsUnversioned, gsAdded, gsDeleted])
           and not SvnListViewItem.Directory then
         begin
           DiffState := True;
@@ -467,7 +479,7 @@ begin
     DiffAction.Enabled := False;
 end;
 
-procedure TSvnCommitFrame.DoDiff(Sender: TObject);
+procedure THgCommitFrame.DoDiff(Sender: TObject);
 var
   I, StartIdx: Integer;
   SvnListViewItem: TSvnListViewItem;
@@ -479,14 +491,14 @@ begin
       if Files.Items[I].Selected then
       begin
         SvnListViewItem := FItemList[FIndexList[Integer(Files.Items[I].Data) - 1]];
-        if not (SvnListViewItem.FTextStatus in [gsUnversioned, gsAdded])
+        if not (SvnListViewItem.FTextStatus in [gsUnversioned, gsAdded, gsDeleted])
           and not SvnListViewItem.Directory then
           DiffCallBack(SvnListViewItem.FPathName);
       end;
   end;
 end;
 
-procedure TSvnCommitFrame.DoRefresh;
+procedure THgCommitFrame.DoRefresh;
 var
   I: Integer;
   SvnListViewItem: TSvnListViewItem;
@@ -538,31 +550,59 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.EndUpdate;
+procedure THgCommitFrame.EndUpdate;
 begin
   Files.CustomSort(@ColumnSort, LPARAM(Self));
   Files.Items.EndUpdate;
 end;
 
-procedure TSvnCommitFrame.ExternalsClick(Sender: TObject);
+procedure THgCommitFrame.ExternalsClick(Sender: TObject);
 begin
   RebuildList;
 end;
 
-procedure TSvnCommitFrame.FilesColumnClick(Sender: TObject;
+procedure THgCommitFrame.FilesColumnClick(Sender: TObject;
   Column: TListColumn);
 begin
-  if FSortColumn = Column.Index then
+  if (Length(FSortColumns) > 0) and (FSortColumns[0] = Column.Index) then
     FSortOrder := not FSortOrder
   else
   begin
-    FSortColumn := Column.Index;
+    case Column.Index of
+      0: begin
+           SetLength(FSortColumns, 1);
+           FSortColumns[0] := 0;//Name
+         end;
+      1: begin
+           SetLength(FSortColumns, 2);
+           FSortColumns[0] := 1;//Path
+           FSortColumns[1] := 0;//Name
+         end;
+      2: begin
+           SetLength(FSortColumns, 3);
+           FSortColumns[0] := 2;//Ext
+           FSortColumns[1] := 1;//Path
+           FSortColumns[2] := 0;//Name
+         end;
+      3: begin
+           SetLength(FSortColumns, 3);
+           FSortColumns[0] := 3;//Status
+           FSortColumns[1] := 1;//Path
+           FSortColumns[2] := 0;//Name
+         end;
+      else
+      begin
+        SetLength(FSortColumns, 1);
+        FSortColumns[0] := 0;//Name
+      end;
+    end;
+    FSortColumns[0] := Column.Index;
     FSortOrder := True;
   end;
   Files.CustomSort(@ColumnSort, LPARAM(Self));
 end;
 
-procedure TSvnCommitFrame.FilesCustomDraw(Sender: TCustomListView;
+procedure THgCommitFrame.FilesCustomDraw(Sender: TCustomListView;
   const ARect: TRect; var DefaultDraw: Boolean);
 var
   ItemRect: TRect;
@@ -578,7 +618,7 @@ begin
   DefaultDraw := not FNoFiles;
 end;
 
-procedure TSvnCommitFrame.FilesCustomDrawItem(Sender: TCustomListView;
+procedure THgCommitFrame.FilesCustomDrawItem(Sender: TCustomListView;
   Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
 var
   TextColor: TColor;
@@ -592,12 +632,12 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.FilesDblClick(Sender: TObject);
+procedure THgCommitFrame.FilesDblClick(Sender: TObject);
 begin
   DoDiff(Sender);
 end;
 
-procedure TSvnCommitFrame.FilesItemChecked(Sender: TObject; Item: TListItem);
+procedure THgCommitFrame.FilesItemChecked(Sender: TObject; Item: TListItem);
 
   procedure UnversionedParentCheck(ASvnListViewItem: TSvnListViewItem);
   var
@@ -674,29 +714,31 @@ begin
         FExecutingUnversionedParentCheck := False;
       end;
     end;
-  for I := 0 to Files.Items.Count - 1 do
-    if Files.Items[I].Checked <> Item.Checked then
-    begin
-      CheckAll.State := cbGrayed;
+    for I := 0 to Files.Items.Count - 1 do
+      if Files.Items[I].Checked <> Item.Checked then
+      begin
+        CheckAll.State := cbGrayed;
         UpdateCommitButton;
-      Exit;
-    end;
-  if Item.Checked then
-    CheckAll.State := cbChecked
-  else
-    CheckAll.State := cbUnChecked;
-  UpdateCommitButton;
-end;
+        UpdateCountLabel;
+        Exit;
+      end;
+    if Item.Checked then
+      CheckAll.State := cbChecked
+    else
+      CheckAll.State := cbUnChecked;
+    UpdateCommitButton;
+    UpdateCountLabel;
+  end;
 end;
 
-procedure TSvnCommitFrame.FilesKeyDown(Sender: TObject; var Key: Word;
+procedure THgCommitFrame.FilesKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if Key = VK_RETURN then
     DoDiff(Sender);
 end;
 
-function TSvnCommitFrame.Found(const FileName: string): Boolean;
+function THgCommitFrame.Found(const FileName: string): Boolean;
 var
   I: Integer;
 begin
@@ -707,7 +749,7 @@ begin
   Result := False;
 end;
 
-function TSvnCommitFrame.GetSvnEditState: TSvnEditState;
+function THgCommitFrame.GetSvnEditState: TSvnEditState;
 begin
   if Comment.Focused then
     Result := ControlToSvnEditState(Comment)
@@ -722,7 +764,7 @@ begin
     Result := [];
 end;
 
-procedure TSvnCommitFrame.HandleMissingFiles(ARefresh: Boolean = False);
+procedure THgCommitFrame.HandleMissingFiles(ARefresh: Boolean = False);
 var
   UnversionedFiles: TDictionary<string, string>;
   MissingList: TStringList;
@@ -788,14 +830,14 @@ begin
   end;
 end;
 
-function TSvnCommitFrame.ItemShown(const SvnListItem: TSvnListViewItem): Boolean;
+function THgCommitFrame.ItemShown(const SvnListItem: TSvnListViewItem): Boolean;
 begin
   Result := UnversionedFiles.Checked or (SvnListItem.TextStatus <> gsUnversioned);
   //Result := Result and (Externals.Checked or (SvnListItem.TextStatus <> svnWcStatusExternal));
   Result := Result and SvnListItem.Visible;
 end;
 
-procedure TSvnCommitFrame.LowerPanelResize(Sender: TObject);
+procedure THgCommitFrame.LowerPanelResize(Sender: TObject);
 begin
   LowerPanel.OnResize := nil;
   try
@@ -805,7 +847,7 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.ResizeStuff;
+procedure THgCommitFrame.ResizeStuff;
 var
   StackButtons: Boolean;
   LongestCheckBoxWidth: Integer;
@@ -863,14 +905,14 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.Notify(Sender: TObject; const Item: TSvnListViewItem;
+procedure THgCommitFrame.Notify(Sender: TObject; const Item: TSvnListViewItem;
   Action: TCollectionNotification);
 begin
   if Action = cnRemoved then
     Item.Free;
 end;
 
-function TSvnCommitFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
+function THgCommitFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
 var
   I, StartIdx: Integer;
   SL: TStringList;
@@ -910,7 +952,7 @@ begin
     Result := False;
 end;
 
-procedure TSvnCommitFrame.RebuildList;
+procedure THgCommitFrame.RebuildList;
 var
   I: Integer;
   Cursor: TCursor;
@@ -940,7 +982,7 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.RecentClick(Sender: TObject);
+procedure THgCommitFrame.RecentClick(Sender: TObject);
 var
   S: string;
 begin
@@ -951,12 +993,12 @@ begin
     Comment.Text := Comment.Text + ' ' + S;
 end;
 
-procedure TSvnCommitFrame.RefreshAdd(const SvnListItem: TSvnListViewItem);
+procedure THgCommitFrame.RefreshAdd(const SvnListItem: TSvnListViewItem);
 begin
   FRefreshItemList.Add(SvnListItem);
 end;
 
-procedure TSvnCommitFrame.ResolveActionExecute(Sender: TObject);
+procedure THgCommitFrame.ResolveActionExecute(Sender: TObject);
 var
   I, StartIdx: Integer;
   SvnListViewItem: TSvnListViewItem;
@@ -981,7 +1023,7 @@ begin
   }
 end;
 
-procedure TSvnCommitFrame.ResolveActionUpdate(Sender: TObject);
+procedure THgCommitFrame.ResolveActionUpdate(Sender: TObject);
 var
   I, StartIdx: Integer;
   ResolveState: Boolean;
@@ -1041,7 +1083,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TSvnCommitFrame.RevertActionExecute(Sender: TObject);
+procedure THgCommitFrame.RevertActionExecute(Sender: TObject);
 var
   SvnListViewItem: TSvnListViewItem;
   S: string;
@@ -1176,7 +1218,7 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.RevertActionUpdate(Sender: TObject);
+procedure THgCommitFrame.RevertActionUpdate(Sender: TObject);
 var
   I, StartIdx: Integer;
   RevertState: Boolean;
@@ -1203,7 +1245,7 @@ begin
     RevertAction.Visible := False;
 end;
 
-procedure TSvnCommitFrame.SetAllowEmptyComment(const Value: Boolean);
+procedure THgCommitFrame.SetAllowEmptyComment(const Value: Boolean);
 begin
   if FAllowEmptyComment <> Value then
   begin
@@ -1214,13 +1256,13 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.SetRecentComments(Value: TStringList);
+procedure THgCommitFrame.SetRecentComments(Value: TStringList);
 begin
   FRecentComments.Assign(Value);
   Recent.Enabled := FRecentComments.Count <> 0;
 end;
 
-procedure TSvnCommitFrame.SetSupportsExternal(const Value: Boolean);
+procedure THgCommitFrame.SetSupportsExternal(const Value: Boolean);
 begin
   if FSupportsExternals <> Value then
   begin
@@ -1229,7 +1271,7 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.SetURL(const AValue: string);
+procedure THgCommitFrame.SetURL(const AValue: string);
 begin
   if FURL <> AValue then
   begin
@@ -1239,7 +1281,7 @@ begin
 end;
 
 
-function TSvnCommitFrame.StatusKindStrEx(Status: THgStatus; ACopied: Boolean): string;
+function THgCommitFrame.StatusKindStrEx(Status: THgStatus; ACopied: Boolean): string;
 begin
   case Status of
     gsAdded: Result := 'Added';//str
@@ -1253,13 +1295,13 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.UnversionedFilesClick(Sender: TObject);
+procedure THgCommitFrame.UnversionedFilesClick(Sender: TObject);
 begin
   RebuildList;
   UpdateCommitButton;
 end;
 
-procedure TSvnCommitFrame.UpdateCommitButton;
+procedure THgCommitFrame.UpdateCommitButton;
 var
   I: Integer;
 begin
@@ -1272,7 +1314,18 @@ begin
     Commit.Enabled := False;
 end;
 
-procedure TSvnCommitFrame.UpdateListView(const SvnListItem: TSvnListViewItem;
+procedure THgCommitFrame.UpdateCountLabel;
+var
+  I, CheckedCount: Integer;
+begin
+  CheckedCount := 0;
+  for I := 0 to FIndexList.Count - 1 do
+    if FItemList[FIndexList[I]].Checked then
+      Inc(CheckedCount);
+  SelCountTotalCount.Caption := Format(sSelCountTotalCount, [CheckedCount, Files.Items.Count]);
+end;
+
+procedure THgCommitFrame.UpdateListView(const SvnListItem: TSvnListViewItem;
   ItemIndex: Integer);
 var
   ListItem: TListItem;
@@ -1303,7 +1356,7 @@ begin
   end;
 end;
 
-procedure TSvnCommitFrame.WndProc(var Message: TMessage);
+procedure THgCommitFrame.WndProc(var Message: TMessage);
 begin
   if (Message.Msg = CM_CHILDKEY) and(TCMChildKey(Message).CharCode = VK_F5) then
     DoRefresh

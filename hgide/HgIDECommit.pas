@@ -110,7 +110,7 @@ type
     var
       FDirectoryList: TStringList;
       FSvnClient: THgClient;
-      FSvnCommitFrame: TSvnCommitFrame;
+      FSvnCommitFrame: THgCommitFrame;
       FRootType: TRootType;
       FFoundMissing: Boolean;
       FStatusItem: PSvnListViewItem;
@@ -501,7 +501,7 @@ var
   RecentComments: TStringList;
   URL: string;
 begin
-  FSvnCommitFrame := TSvnCommitFrame(AFrame);
+  FSvnCommitFrame := THgCommitFrame(AFrame);
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   Application.ProcessMessages;
@@ -570,7 +570,7 @@ end;
 
 function TCommit.GetFrameClass: TCustomFrameClass;
 begin
-  Result := TSvnCommitFrame;
+  Result := THgCommitFrame;
 end;
 
 function TCommit.GetImageIndex: Integer;

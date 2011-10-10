@@ -49,7 +49,7 @@ contains
   HgClientRecentComments in 'HgClientRecentComments.pas' {RecentCommentsDialog},
   HgImages in 'HgImages.pas' {HgImageModule: TDataModule},
   HgTree in 'HgTree.pas',
-  HgClientCommitFrame in 'HgClientCommitFrame.pas' {SvnCommitFrame: TFrame},
+  HgClientCommitFrame in 'HgClientCommitFrame.pas' {HgCommitFrame: TFrame},
   HgIDECommit in 'HgIDECommit.pas',
   HgIDEMessageView in 'HgIDEMessageView.pas',
   HgIDECheckout in 'HgIDECheckout.pas',
