@@ -368,6 +368,7 @@ end;
 procedure TGitCommitFrame.CheckForNoFilesVisible;
 begin
   FNoFiles := Files.Items.Count = 0;
+  UpdateCountLabel;
 end;
 
 procedure TGitCommitFrame.CMRelease(var Message: TMessage);
@@ -979,6 +980,7 @@ begin
     finally
       Files.Items.EndUpdate;
     end;
+    UpdateCountLabel;
   finally
     Screen.Cursor := Cursor;
   end;
