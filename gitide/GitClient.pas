@@ -149,6 +149,8 @@ type
     property LastCommitInfoHash: string read FLastCommitInfoHash;
   end;
 
+function UTCToTzDateTime(Value: TDateTime): TDateTime;
+
 implementation
 
 //--- JclBase and JclSysUtils --------------------------------------------------
@@ -391,6 +393,21 @@ begin
 end;
 
 //------------------------------------------------------------------------------
+
+function UTCToTzDateTime(Value: TDateTime): TDateTime;
+var
+  TZ: TTimeZoneInformation;
+begin
+  Result := Value;
+  case GetTimeZoneInformation(TZ) of
+    TIME_ZONE_ID_DAYLIGHT:
+      Result := Result - (TZ.Bias + TZ.DaylightBias) / MinsPerDay;
+    TIME_ZONE_ID_STANDARD:
+      Result := Result - (TZ.Bias + TZ.StandardBias) / MinsPerDay;
+    TIME_ZONE_ID_UNKNOWN:
+      Result := Result - TZ.Bias / MinsPerDay;
+  end;
+end;
 
 function QuoteFileName(const FileName: string): string;
 begin

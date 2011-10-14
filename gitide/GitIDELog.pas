@@ -415,7 +415,7 @@ begin
       for I := FFirst to LastNewIndex do
       begin
         HistoryItem := GitItem.HistoryItems[I];
-        FSvnLogFrame.AddRevisions(HistoryItem.Hash, HistoryItem.Date,
+        FSvnLogFrame.AddRevisions(HistoryItem.Hash, UTCToTzDateTime(HistoryItem.Date),
           HistoryItem.Author, HistoryItem.Subject, '', HistoryItem.ChangedFiles);
       end;
     finally
