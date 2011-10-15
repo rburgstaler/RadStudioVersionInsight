@@ -288,7 +288,7 @@ end;
 procedure TCommit.CommitCallBack(const CommitList: TStringList;
   const Comment: string; const RecentComments: TStringList);
 begin
-  DoCommit(FSvnClient, CommitList, Comment, RecentComments, False{IDEClient.Options.DeleteBackupFilesAfterCommit});
+  DoCommit(FSvnClient, CommitList, Comment, RecentComments, IDEClient.Options.DeleteBackupFilesAfterCommit);
 end;
 
 constructor TCommit.Create(SvnClient: TGitClient; const DirectoryList: TStringList;

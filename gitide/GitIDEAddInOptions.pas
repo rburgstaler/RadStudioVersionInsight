@@ -80,6 +80,8 @@ begin
     Colors[ssckModified] := FFrame.cboxModified.Selected;
     IDEClient.Colors.Colors := Colors;
     IDEClient.Colors.Save;
+    IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
+    IDEClient.Options.Save;
   end;
 end;
 
@@ -93,6 +95,7 @@ begin
   FFrame.cboxDeleted.Selected := IDEClient.Colors.Colors[ssckDeleted];
   FFrame.cboxMerged.Selected := IDEClient.Colors.Colors[ssckMerged];
   FFrame.cboxModified.Selected := IDEClient.Colors.Colors[ssckModified];
+  FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
 end;
 
 function TGitAddInOptions.GetArea: string;

@@ -49,6 +49,8 @@ type
     cboxMerged: TColorBox;
     cboxModified: TColorBox;
     cbStatusColorsEnabled: TCheckBox;
+    GroupBox3: TGroupBox;
+    cbDeleteBackupFilesAfterCommit: TCheckBox;
     procedure SpeedButton1Click(Sender: TObject);
   private
     { Private declarations }

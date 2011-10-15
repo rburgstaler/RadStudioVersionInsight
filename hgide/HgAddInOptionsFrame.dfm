@@ -2,7 +2,7 @@ object frmHgTestsOptions: TfrmHgTestsOptions
   Left = 0
   Top = 0
   Width = 414
-  Height = 299
+  Height = 341
   TabOrder = 0
   object GroupBox1: TGroupBox
     Left = 8
@@ -127,6 +127,22 @@ object frmHgTestsOptions: TfrmHgTestsOptions
       Width = 124
       Height = 17
       Caption = 'Enable Colors'
+      TabOrder = 0
+    end
+  end
+  object GroupBox3: TGroupBox
+    Left = 8
+    Top = 278
+    Width = 305
+    Height = 50
+    Caption = ' Options '
+    TabOrder = 2
+    object cbDeleteBackupFilesAfterCommit: TCheckBox
+      Left = 5
+      Top = 22
+      Width = 172
+      Height = 17
+      Caption = 'Delete backup files after commit'
       TabOrder = 0
     end
   end
