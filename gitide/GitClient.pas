@@ -1071,21 +1071,30 @@ end;
 function TGitClient.IsVersioned(const AFileName: string): Boolean;
 var
   Res: Integer;
-  CmdLine, Output: string;
+  CmdLine, Output, CheckFileName: string;
   CurrentDir: string;
 begin
   if FGitExecutable <> '' then
   begin
     CurrentDir := GetCurrentDir;
     try
-      SetCurrentDir(ExtractFilePath(AFileName));
-      CmdLine := FGitExecutable + ' log --max-count=1 ' + QuoteFileName(ExtractFileName(AFileName));
+      if DirectoryExists(AFileName) then
+      begin
+        SetCurrentDir(AFileName);
+        CheckFileName := '.';
+      end
+      else
+      begin
+        SetCurrentDir(ExtractFilePath(AFileName));
+        CheckFileName := ExtractFileName(AFileName);
+      end;
+      CmdLine := FGitExecutable + ' log --max-count=1 ' + QuoteFileName(CheckFileName);
       Res := Execute(CmdLine, Output);
       if (Res = 0) and (Pos('commit ', Output) = 1) then
         Result := True
       else
       begin
-        CmdLine := FGitExecutable + ' status ' + QuoteFileName(ExtractFileName(AFileName));
+        CmdLine := FGitExecutable + ' status ' + QuoteFileName(CheckFileName);
         Res := Execute(CmdLine, Output);
         Result := {(Res = 0) and }(Pos('fatal: Not a git repository', Output) = 0);
       end;
