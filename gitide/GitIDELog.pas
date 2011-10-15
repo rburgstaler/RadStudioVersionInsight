@@ -258,8 +258,7 @@ end;
 
 function TLogView.FileColorCallBack(Action: Char): TColor;
 begin
-//  Result := IDEClient.Colors.GetLogActionColor(Action);
-  Result := clWindowText;
+  Result := IDEClient.Colors.GetLogActionColor(Action);
 end;
 
 procedure TLogView.FrameCreated(AFrame: TCustomFrame);
@@ -271,7 +270,7 @@ begin
   FGitItem := TGitItem.Create(FGitClient, FRootPath);
   LoadRevisionsCallBack('', '', 100);
 
-  //FSvnLogFrame.FileColorCallBack := FileColorCallBack;
+  FSvnLogFrame.FileColorCallBack := FileColorCallBack;
   FSvnLogFrame.LoadRevisionsCallBack := LoadRevisionsCallBack;
   //FSvnLogFrame.ReverseMergeCallBack := ReverseMergeCallBack;
   FSvnLogFrame.CompareRevisionCallBack := CompareRevisionCallBack;

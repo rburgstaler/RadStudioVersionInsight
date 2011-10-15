@@ -55,7 +55,8 @@ contains
   HgIDECheckout in 'HgIDECheckout.pas',
   HgClientCheckout in 'HgClientCheckout.pas' {CheckoutDialog},
   HgClientProjectSelect in 'HgClientProjectSelect.pas' {SvnProjectSelectDialog},
-  HgClientUpdate in 'HgClientUpdate.pas' {UpdateDialog};
+  HgClientUpdate in 'HgClientUpdate.pas' {UpdateDialog},
+  HgIDEColors in 'HgIDEColors.pas';
 
 end.
 

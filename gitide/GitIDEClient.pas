@@ -27,12 +27,13 @@ unit GitIDEClient;
 interface
 
 uses
-  SysUtils, Classes, GitClient;
+  SysUtils, Classes, GitClient, GitIDEColors;
 
 type
   TGitIDEClient = class(TObject)
   private
     FHistoryProviderIndex: Integer;
+    FColors: TGitColors;
     FGitClient: TGitClient;
     FGitInitialized: Boolean;
     procedure Initialize;
@@ -41,6 +42,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    property Colors: TGitColors read FColors;
     function GitInitialize: Boolean;
     property GitClient: TGitClient read GetGitClient;
   end;
@@ -77,12 +79,14 @@ end;
 constructor TGitIDEClient.Create;
 begin
   inherited Create;
+  FColors := TGitColors.Create;
   Initialize;
 end;
 
 destructor TGitIDEClient.Destroy;
 begin
   Finalize;
+  FColors.Free;
   inherited Destroy;
 end;
 

@@ -27,12 +27,13 @@ unit HgIDEClient;
 interface
 
 uses
-  SysUtils, Classes, HgClient;
+  SysUtils, Classes, HgClient, HgIDEColors;
 
 type
   THgIDEClient = class(TObject)
   private
     FHistoryProviderIndex: Integer;
+    FColors: THgColors;
     FHgClient: THgClient;
     FHgInitialized: Boolean;
     procedure Initialize;
@@ -41,6 +42,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    property Colors: THgColors read FColors;
     function HgInitialize: Boolean;
     property HgClient: THgClient read GetHgClient;
   end;
@@ -77,12 +79,14 @@ end;
 constructor THgIDEClient.Create;
 begin
   inherited Create;
+  FColors := THgColors.Create;
   Initialize;
 end;
 
 destructor THgIDEClient.Destroy;
 begin
   Finalize;
+  FColors.Free;
   inherited Destroy;
 end;
 

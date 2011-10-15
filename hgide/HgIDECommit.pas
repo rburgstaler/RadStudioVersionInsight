@@ -363,8 +363,7 @@ end;
 
 function TCommit.FileColorCallBack(AItem: TSvnListViewItem): TColor;
 begin
-  //Result := IDEClient.Colors.GetStatusColor(AItem.TextStatus);
-  Result := clWindowText;
+  Result := IDEClient.Colors.GetStatusColor(AItem.TextStatus);
 end;
 
 procedure TCommit.PrepareFileList(FrameAdd: TRefreshProc; AModificationCallBack: THgStatusCallback; var AURL: string);
