@@ -1,4 +1,4 @@
-object SvnLogFrame: TSvnLogFrame
+object HgLogFrame: THgLogFrame
   Left = 0
   Top = 0
   Width = 886

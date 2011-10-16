@@ -84,7 +84,7 @@ type
   protected
     var
       FHgClient: THgClient;
-      FSvnLogFrame: TSvnLogFrame;
+      FSvnLogFrame: THgLogFrame;
       FHgItem: THgItem;
       FRootPath: string;
       FFirst: Integer;
@@ -265,7 +265,7 @@ procedure TLogView.FrameCreated(AFrame: TCustomFrame);
 var
   RepoRootPath, RootRelativePath: string;
 begin
-  FSvnLogFrame := TSvnLogFrame(AFrame);
+  FSvnLogFrame := THgLogFrame(AFrame);
 
   FHgItem := THgItem.Create(FHgClient, FRootPath);
   LoadRevisionsCallBack(-1, -1, 100);
@@ -322,7 +322,7 @@ end;
 
 function TLogView.GetFrameClass: TCustomFrameClass;
 begin
-  Result := TSvnLogFrame;
+  Result := THgLogFrame;
 end;
 
 function TLogView.GetImageIndex: Integer;

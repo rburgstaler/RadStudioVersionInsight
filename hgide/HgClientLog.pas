@@ -63,7 +63,7 @@ type
   TCompareRevisionCallBack = procedure(AFileList: TStringList; ARevision1, ARevision2: Integer) of object;
   TSaveRevisionCallBack = procedure(AFileList: TStringList; ARevision: Integer; const ADestPath: string) of object;
 
-  TSvnLogFrame = class(TFrame)
+  THgLogFrame = class(TFrame)
     Splitter1: TSplitter;
     Splitter2: TSplitter;
     CenterPanel: TPanel;
@@ -208,7 +208,7 @@ end;
 
 { TSvnLogFrame }
 
-procedure TSvnLogFrame.CompareRevisionsActionExecute(Sender: TObject);
+procedure THgLogFrame.CompareRevisionsActionExecute(Sender: TObject);
 var
   I, J, Idx, FirstRevisionIndex, SecondRevisionIndex: Integer;
   FirstRevision, SecondRevision: TRevision;
@@ -278,13 +278,13 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.CompareRevisionsActionUpdate(Sender: TObject);
+procedure THgLogFrame.CompareRevisionsActionUpdate(Sender: TObject);
 begin
   CompareRevisionsAction.Visible := Assigned(FCompareRevisionCallBack) and (Revisions.SelCount = 2);
   CompareRevisionsAction.Enabled := CompareRevisionsAction.Visible;
 end;
 
-procedure TSvnLogFrame.CompareWithPreviousRevisionActionExecute(Sender: TObject);
+procedure THgLogFrame.CompareWithPreviousRevisionActionExecute(Sender: TObject);
 var
   I: Integer;
   Revision: TRevision;
@@ -308,13 +308,13 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.CompareWithPreviousRevisionActionUpdate(Sender: TObject);
+procedure THgLogFrame.CompareWithPreviousRevisionActionUpdate(Sender: TObject);
 begin
   CompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack) and (Revisions.SelCount = 1);
   CompareWithPreviousRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
-procedure TSvnLogFrame.FileCompareWithPreviousRevisionActionExecute(
+procedure THgLogFrame.FileCompareWithPreviousRevisionActionExecute(
   Sender: TObject);
 var
   I: Integer;
@@ -340,13 +340,13 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.FileCompareWithPreviousRevisionActionUpdate(Sender: TObject);
+procedure THgLogFrame.FileCompareWithPreviousRevisionActionUpdate(Sender: TObject);
 begin
   FileCompareWithPreviousRevisionAction.Visible := Assigned(FCompareRevisionCallBack) and (Revisions.SelCount = 1);
   FileCompareWithPreviousRevisionAction.Enabled := Assigned(Files.Selected);
 end;
 
-procedure TSvnLogFrame.FileReverseMergeRevisionActionExecute(Sender: TObject);
+procedure THgLogFrame.FileReverseMergeRevisionActionExecute(Sender: TObject);
 var
   Revision: TRevision;
   PathName, PathMsg: string;
@@ -368,7 +368,7 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.FileReverseMergeRevisionActionUpdate(Sender: TObject);
+procedure THgLogFrame.FileReverseMergeRevisionActionUpdate(Sender: TObject);
 var
   ActionEnabled: Boolean;
   FilesSL: TStringList;
@@ -389,7 +389,7 @@ begin
   FileReverseMergeRevisionAction.Enabled := ActionEnabled;
 end;
 
-procedure TSvnLogFrame.FileSaveRevisionActionExecute(Sender: TObject);
+procedure THgLogFrame.FileSaveRevisionActionExecute(Sender: TObject);
 var
   I: Integer;
   Revision: TRevision;
@@ -415,13 +415,13 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.FileSaveRevisionActionUpdate(Sender: TObject);
+procedure THgLogFrame.FileSaveRevisionActionUpdate(Sender: TObject);
 begin
   FileSaveRevisionAction.Visible := Assigned(FSaveRevisionCallBack) and (Revisions.SelCount = 1);
   FileSaveRevisionAction.Enabled := Assigned(Files.Selected);
 end;
 
-procedure TSvnLogFrame.ReverseMergeRevisionActionExecute(Sender: TObject);
+procedure THgLogFrame.ReverseMergeRevisionActionExecute(Sender: TObject);
 var
   Revision: TRevision;
 begin
@@ -433,13 +433,13 @@ begin
   }
 end;
 
-procedure TSvnLogFrame.ReverseMergeRevisionActionUpdate(Sender: TObject);
+procedure THgLogFrame.ReverseMergeRevisionActionUpdate(Sender: TObject);
 begin
   ReverseMergeRevisionAction.Visible := Assigned(FReverseMergeCallBack) and (Revisions.SelCount = 1);
   ReverseMergeRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
-procedure TSvnLogFrame.ReverseMergeToRevisionActionExecute(Sender: TObject);
+procedure THgLogFrame.ReverseMergeToRevisionActionExecute(Sender: TObject);
 var
   Revision: TRevision;
 begin
@@ -451,13 +451,13 @@ begin
   }
 end;
 
-procedure TSvnLogFrame.ReverseMergeToRevisionActionUpdate(Sender: TObject);
+procedure THgLogFrame.ReverseMergeToRevisionActionUpdate(Sender: TObject);
 begin
   ReverseMergeToRevisionAction.Visible := Assigned(FReverseMergeCallBack) and (Revisions.SelCount = 1);
   ReverseMergeToRevisionAction.Enabled := Assigned(Revisions.Selected);
 end;
 
-procedure TSvnLogFrame.AddRevisions(Revision: Integer; Time: TDateTime;
+procedure THgLogFrame.AddRevisions(Revision: Integer; Time: TDateTime;
   const Author, Comment, BugID: string; const Files: TStringList);
 var
   TempRev: string;
@@ -473,7 +473,7 @@ begin
     Revisions.Items[0].Selected := True;
 end;
 
-procedure TSvnLogFrame.AddRevisionToListView(ARevision: TRevision);
+procedure THgLogFrame.AddRevisionToListView(ARevision: TRevision);
 var
   I, W, LastColumn: Integer;
   S: string;
@@ -515,12 +515,12 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.BeginUpdate;
+procedure THgLogFrame.BeginUpdate;
 begin
   Revisions.Items.BeginUpdate
 end;
 
-procedure TSvnLogFrame.SearchKeyDown(Sender: TObject; var Key: Word;
+procedure THgLogFrame.SearchKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   case Key of
@@ -537,14 +537,14 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.SearchKeyPress(Sender: TObject; var Key: Char);
+procedure THgLogFrame.SearchKeyPress(Sender: TObject; var Key: Char);
 begin
   // Prevent the windows beep.
   if (Key = #27) or (Key = #13) then
     Key := #0;
 end;
 
-procedure TSvnLogFrame.SearchKeyUp(Sender: TObject; var Key: Word;
+procedure THgLogFrame.SearchKeyUp(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if Search.Text = '' then
@@ -553,11 +553,11 @@ begin
     DoSearch(Search.Text);
 end;
 
-procedure TSvnLogFrame.StartAsync;
+procedure THgLogFrame.StartAsync;
 begin
 end;
 
-procedure TSvnLogFrame.RangeClick(Sender: TObject);
+procedure THgLogFrame.RangeClick(Sender: TObject);
 var
   I, FromRevision, ToRevision: Integer;
   Update: Boolean;
@@ -600,12 +600,12 @@ begin
   }
 end;
 
-procedure TSvnLogFrame.SearchRightButtonClick(Sender: TObject);
+procedure THgLogFrame.SearchRightButtonClick(Sender: TObject);
 begin
   DoCancelSearch;
 end;
 
-procedure TSvnLogFrame.SetShowBugIDColumn(const Value: Boolean);
+procedure THgLogFrame.SetShowBugIDColumn(const Value: Boolean);
 var
   BugIDColumn: TListColumn;
 begin
@@ -629,7 +629,7 @@ begin
   end;
 end;
 
-constructor TSvnLogFrame.Create(AOwner: TComponent);
+constructor THgLogFrame.Create(AOwner: TComponent);
 var
   I: Integer;
 begin
@@ -652,7 +652,7 @@ begin
   InitRevisionColumnWidths;
 end;
 
-destructor TSvnLogFrame.Destroy;
+destructor THgLogFrame.Destroy;
 begin
   FRevisionFiles.Free;
   Revisions.Clear;//there is no sanity check in RevisionsData and freeing FVisibleRevisions would lead to an AV
@@ -661,14 +661,14 @@ begin
   inherited;
 end;
 
-procedure TSvnLogFrame.DoCancelSearch;
+procedure THgLogFrame.DoCancelSearch;
 begin
   Search.Clear;
   RestoreRevisions;
   Revisions.SetFocus;
 end;
 
-procedure TSvnLogFrame.DoSearch(const Text: string);
+procedure THgLogFrame.DoSearch(const Text: string);
 
   function CheckItem(const Item: TRevision): Boolean;
   var
@@ -715,12 +715,12 @@ begin
   Search.RightButton.Visible := True;
 end;
 
-procedure TSvnLogFrame.EndUpdate;
+procedure THgLogFrame.EndUpdate;
 begin
   Revisions.Items.EndUpdate;
 end;
 
-procedure TSvnLogFrame.FilesCustomDrawItem(Sender: TCustomListView;
+procedure THgLogFrame.FilesCustomDrawItem(Sender: TCustomListView;
   Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
 var
   TextColor: TColor;
@@ -743,7 +743,7 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.FilesData(Sender: TObject; Item: TListItem);
+procedure THgLogFrame.FilesData(Sender: TObject; Item: TListItem);
 var
   S: string;
   FilesSL: TStringList;
@@ -765,17 +765,17 @@ begin
   end;
 end;
 
-function TSvnLogFrame.GetCommentColumn: Integer;
+function THgLogFrame.GetCommentColumn: Integer;
 begin
   Result := 3;
 end;
 
-function TSvnLogFrame.GetShowBugIDColumn: Boolean;
+function THgLogFrame.GetShowBugIDColumn: Boolean;
 begin
   Result := FBugIDColumnNo <> -1;
 end;
 
-function TSvnLogFrame.GetSvnEditState: TSvnEditState;
+function THgLogFrame.GetSvnEditState: TSvnEditState;
 begin
   if Search.Focused then
     Result := ControlToSvnEditState(Search)
@@ -800,7 +800,7 @@ begin
     Result := [];
 end;
 
-procedure TSvnLogFrame.InitRevisionColumnWidths;
+procedure THgLogFrame.InitRevisionColumnWidths;
 var
   I, LastColumn: Integer;
 begin
@@ -815,7 +815,7 @@ begin
     end;
 end;
 
-procedure TSvnLogFrame.NextClick(Sender: TObject);
+procedure THgLogFrame.NextClick(Sender: TObject);
 var
   First: Integer;
 begin
@@ -828,14 +828,14 @@ begin
   FLoadRevisionsCallBack(First, -1, DefaultRange);
 end;
 
-procedure TSvnLogFrame.NextCompleted;
+procedure THgLogFrame.NextCompleted;
 begin
   Next.Enabled := True;
   Refresh.Enabled := True;
   Range.Enabled := True;
 end;
 
-function TSvnLogFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
+function THgLogFrame.PerformEditAction(AEditAction: TSvnEditAction): Boolean;
 var
   I, J: Integer;
   S, ColumnContent: string;
@@ -947,7 +947,7 @@ begin
     Result := False;
 end;
 
-procedure TSvnLogFrame.RefreshClick(Sender: TObject);
+procedure THgLogFrame.RefreshClick(Sender: TObject);
 var
   I: Integer;
 begin
@@ -966,7 +966,7 @@ begin
   FLoadRevisionsCallBack(-1, -1, FCount);
 end;
 
-procedure TSvnLogFrame.RestoreRevisions;
+procedure THgLogFrame.RestoreRevisions;
 var
   I: Integer;
 begin
@@ -986,7 +986,7 @@ begin
   end;
 end;
 
-procedure TSvnLogFrame.RevisionsData(Sender: TObject; Item: TListItem);
+procedure THgLogFrame.RevisionsData(Sender: TObject; Item: TListItem);
 var
   Revision: TRevision;
 begin
@@ -1000,13 +1000,13 @@ begin
   Item.Data := Revision.FFiles;
 end;
 
-procedure TSvnLogFrame.RevisionsDataStateChange(Sender: TObject; StartIndex,
+procedure THgLogFrame.RevisionsDataStateChange(Sender: TObject; StartIndex,
   EndIndex: Integer; OldState, NewState: TItemStates);
 begin
   RevisionsSelectItem(nil, nil, False);
 end;
 
-procedure TSvnLogFrame.RevisionsSelectItem(Sender: TObject; Item: TListItem;
+procedure THgLogFrame.RevisionsSelectItem(Sender: TObject; Item: TListItem;
   Selected: Boolean);
 var
   I, J, W, Idx, ActionValue: Integer;
@@ -1110,5 +1110,5 @@ begin
 end;
 
 initialization
-  TSvnLogFrame.FUseCount := 0;
+  THgLogFrame.FUseCount := 0;
 end.
