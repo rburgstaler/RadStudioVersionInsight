@@ -734,7 +734,10 @@ begin
       FilesSL := TStringList(Revisions.Selected.Data)
     else
       FilesSL := FRevisionFiles;
-    TextColor := FFileColorCallBack(FilesSL[Item.Index][1]);
+    if (FRootRelativePath = '') or (Pos(FRootRelativePath, System.Copy(FilesSL[Item.Index], 2, MaxInt)) > 0) then
+      TextColor := FFileColorCallBack(FilesSL[Item.Index][1])
+    else
+      TextColor := FFileColorCallBack('-');
     if TextColor <> clNone then
       Files.Canvas.Font.Color := TextColor;
   end;

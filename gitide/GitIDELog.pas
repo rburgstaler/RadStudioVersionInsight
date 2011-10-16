@@ -263,7 +263,7 @@ end;
 
 procedure TLogView.FrameCreated(AFrame: TCustomFrame);
 var
-  URL, RootURL, RootRelativePath: string;
+  RepoRootPath, RootRelativePath: string;
 begin
   FSvnLogFrame := TGitLogFrame(AFrame);
 
@@ -275,15 +275,18 @@ begin
   //FSvnLogFrame.ReverseMergeCallBack := ReverseMergeCallBack;
   FSvnLogFrame.CompareRevisionCallBack := CompareRevisionCallBack;
   FSvnLogFrame.SaveRevisionCallBack := SaveRevisionCallBack;
-  {
   FSvnLogFrame.RootPath := ExcludeTrailingPathDelimiter(FRootPath);
-  URL := IDEClient.SvnClient.FindRepository(FRootPath);
-  RootURL := IDEClient.SvnClient.FindRepositoryRoot(FRootPath);
-  if URL <> RootURL then
-    RootRelativePath := Copy(URL, Length(RootURL) + 1, MaxInt)
+  RepoRootPath := IDEClient.GitClient.FindRepositoryRoot(FRootPath);
+  RepoRootPath := IncludeTrailingPathDelimiter(StringReplace(RepoRootPath, '/', '\', [rfReplaceAll]));
+  if RepoRootPath <> FRootPath then
+  begin
+    RootRelativePath := Copy(FRootPath, Length(RepoRootPath) + 1, MaxInt);
+    RootRelativePath := StringReplace(RootRelativePath, '\', '/', [rfReplaceAll]);
+  end
   else
     RootRelativePath := '';
   FSvnLogFrame.RootRelativePath := RootRelativePath;
+  {
   FSvnLogFrame.ShowBugIDColumn := FBugIDParser.BugTraqLogRegEx <> '';
   FSvnItem := TSvnItem.Create(FSvnClient, nil, FRootPath, True);
   FSvnItem.AsyncUpdate := Self;
