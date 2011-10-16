@@ -125,6 +125,7 @@ type
     procedure CompareRevisionsActionExecute(Sender: TObject);
     procedure RevisionsDataStateChange(Sender: TObject; StartIndex,
       EndIndex: Integer; OldState, NewState: TItemStates);
+    procedure FilesDblClick(Sender: TObject);
   protected
     FBugIDColumnNo: Integer;
     FCount: Integer;
@@ -763,6 +764,12 @@ begin
     end;
     Item.SubItems.Add(S);
   end;
+end;
+
+procedure TGitLogFrame.FilesDblClick(Sender: TObject);
+begin
+  if FileCompareWithPreviousRevisionAction.Enabled then
+    FileCompareWithPreviousRevisionAction.Execute;
 end;
 
 function TGitLogFrame.GetCommentColumn: Integer;
