@@ -649,6 +649,7 @@ type
     function GetBaseURL(AFilesAndDirectories: TStringList; var ABasePath: string): string;
     procedure GetChangeLists(const PathName: string; ChangeLists: TStrings; SvnDepth: TSvnDepth = svnDepthInfinity; SubPool: PAprPool = nil);
     procedure GetExternals(const PathName: string; Externals: TStrings; Recurse: Boolean = True);
+    function GetHeadRevision(const URL: string; SubPool: PAprPool = nil): TSvnRevNum;
     function GetMaxRevision(const PathName: string; SubPool: PAprPool = nil): Integer;
     function GetModifications(const PathName: string; Callback: TSvnStatusCallback = nil;
       Recurse: Boolean = True; Update: Boolean = False; IgnoreExternals: Boolean = False;
@@ -3198,6 +3199,25 @@ begin
     SvnCheck(svn_client_status2(nil, PAnsiChar(UTF8Encode(SvnPathName)),
       @Revision, WCStatus4, Pointer(@Status), False, True, False, False, False,
       FCtx, SubPool));
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+function TSvnClient.GetHeadRevision(const URL: string; SubPool: PAprPool): TSvnRevNum;
+var
+  NewPool: Boolean;
+  EncodedURL: PAnsiChar;
+  RASession: PSvnRaSession;
+begin
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    EncodedURL := svn_path_uri_encode(PAnsiChar(UTF8Encode(URL)), SubPool);
+    SvnCheck(svn_client_open_ra_session(RASession, EncodedURL, FCtx, SubPool));
+    SvnCheck(svn_ra_get_latest_revnum(RASession, Result, SubPool));
   finally
     if NewPool then
       apr_pool_destroy(SubPool);
