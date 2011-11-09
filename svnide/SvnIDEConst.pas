@@ -51,6 +51,7 @@ resourcestring
   sPMMProjectDir = 'From Project Directory';
   sPMMExpicitFiles = 'Files in this Project';
   sPMMRepo = 'Browse Repository';
+  sPMMMerge = 'Merge';
 
   sCommit = 'Commit';
   sUpdated = 'Updated';
@@ -68,6 +69,7 @@ resourcestring
   sRepoBrowser = 'Repository Browser';
   sVersionControlAddInOptionArea = 'Version Control';
   sMergeDialogCaption = 'Merge revisions %s - %s of %s into %s';
+  sMergeDialogCaptionRange = 'Merge revisions %s of %s into %s';
   sHead = 'HEAD';
   sRetrievingFileRevision = 'Retrieving %s revision %d';
   sSavingFileRevision = 'Saving %s revision %d';

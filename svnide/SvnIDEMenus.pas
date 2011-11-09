@@ -64,6 +64,10 @@ const
   pmmpParentRepoSvnMenu = pmmpUserVersionControl + 150;
   pmmpRootDirRepoSvnMenu = pmmpUserVersionControl + 160;
   pmmpProjectDirRepoSvnMenu = pmmpUserVersionControl + 170;
+  // Merge
+  pmmpParentMergeSvnMenu = pmmpUserVersionControl + 180;
+  pmmpRootDirMergeSvnMenu = pmmpUserVersionControl + 190;
+  pmmpProjectDirMergeSvnMenu = pmmpUserVersionControl + 200;
   // File Menu Items
   pmmpFileCommitSvnMenu = pmmpUserVersionControl + 1010;
   pmmpFileUpdateSvnMenu = pmmpUserVersionControl + 1020;
@@ -131,7 +135,7 @@ function RootDirectory(const SvnClient: TSvnClient; const Path: string): string;
 implementation
 
 uses SysUtils, SvnIDEConst, SvnIDECommit, SvnIDEUpdate, SvnIDEClean, SvnIDELog,
-  SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser;
+  SvnIDEImport, SvnIDECheckout, SvnIDERepoBrowser, SvnIDEMerge;
 
 const
   sSubversionName = 'embarcadero.subversion';
@@ -179,7 +183,8 @@ var
   PMMProjectDirUpdate, PMMExpicitFilesUpdate, PMMFileUpdate,
   PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
   PMMParentLogSvnMenu, PMMRootDirLogSvnMenu, PMMProjectDirLogSvnMenu,
-  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu: IOTAProjectManagerMenu;
+  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu,
+  PMMParentMergeSvnMenu, PMMRootDirMergeSvnMenu, PMMProjectDirMergeSvnMenu: IOTAProjectManagerMenu;
 
 function RootDirectory(const SvnClient: TSvnClient; const Path: string): string;
 var
@@ -564,6 +569,9 @@ begin
     ProjectManagerMenuList.Add(PMMParentRepo);
     ProjectManagerMenuList.Add(PMMRootDirRepo);
     ProjectManagerMenuList.Add(PMMProjectDirRepo);
+    ProjectManagerMenuList.Add(PMMParentMergeSvnMenu);
+    ProjectManagerMenuList.Add(PMMRootDirMergeSvnMenu);
+    ProjectManagerMenuList.Add(PMMProjectDirMergeSvnMenu);
   end
   else
   begin
@@ -600,6 +608,9 @@ begin
   PMMRootDirRepo := TRootDirRepoSvnMenu.Create(ASvnIDEClient);
   PMMProjectDirRepo := TProjectDirRepoSvnMenu.Create(ASvnIDEClient);
   PMMFileRepoSvnMenu := TFileRepoSvnMenu.Create(ASvnIDEClient);
+  PMMParentMergeSvnMenu := TParentMergeSvnMenu.Create;
+  PMMRootDirMergeSvnMenu := TRootDirMergeSvnMenu.Create(ASvnIDEClient);
+  PMMProjectDirMergeSvnMenu := TProjectDirMergeSvnMenu.Create(ASvnIDEClient);
 end;
 
 procedure UnRegisterMenus;
@@ -626,6 +637,9 @@ begin
   PMMRootDirRepo := nil;
   PMMProjectDirRepo := nil;
   PMMFileRepoSvnMenu := nil;
+  PMMParentMergeSvnMenu := nil;
+  PMMRootDirMergeSvnMenu := nil;
+  PMMProjectDirMergeSvnMenu := nil;
 end;
 
 { TParentSvnMenu }
