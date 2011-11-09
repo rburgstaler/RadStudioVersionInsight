@@ -273,6 +273,9 @@ type
       Update: Boolean = False; DoReload:Boolean = False); overload;
     constructor Create(ASvnClient: TSvnClient; AParent: TSvnItem; const ASvnPathName: string;
       const Status: TSvnWcStatus2); overload;
+    { TSvnItem for URLs is some kind of a hack and right now don't expect
+      anything else to work than asynchronous history loading }
+    constructor Create(ASvnClient: TSvnClient; const AURL: string); overload;
     destructor Destroy; override;
 
     function Add(Item: TSvnItem): Integer;
@@ -2258,6 +2261,32 @@ begin
   LoadStatus(Status);
   if Assigned(FParent) then
     FParent.Add(Self);
+  FDestroyNotifications := nil;
+end;
+
+constructor TSvnItem.Create(ASvnClient: TSvnClient; const AURL: string);
+var
+  Status: TSvnWcStatus2;
+begin
+  inherited Create;
+  FSvnClient := ASvnClient;
+  FSvnPathName := '';
+  FParent := nil;
+  FItems := nil;
+  FHistory := nil;
+  FProps := nil;
+  FFileAttr := 0;
+  FPathName := '';
+  FSmallImageIndex := -1;
+  FLargeImageIndex := -1;
+  FPropValDelimiter := ';';
+  FLogLimit := 0;
+  FLogFirstRev := -1;
+  FLogLastRev := -1;
+  Status.entry := nil;
+  Status.repos_lock := nil;
+  LoadStatus(Status);
+  FURL := AURL;
   FDestroyNotifications := nil;
 end;
 
@@ -4889,6 +4918,8 @@ var
   Targets: PAprArrayHeader;
   Error: PSvnError;
   PCtx: PSvnClientCtx;
+  EncodedURL: PAnsiChar;
+  SL: TStringList;
 begin
   NameThreadForDebugging('DelphiSVN History Updater');
   FSvnItem.FHistory := TList.Create;
@@ -4912,7 +4943,19 @@ begin
         EndRevision.Value.number := 0
       else
         EndRevision.Value.number := FSvnItem.LogLastRev;
-      Targets := FSvnItem.SvnClient.PathNamesToAprArray([FSvnItem.SvnPathName], SubPool);
+      if (FSvnItem.SvnPathName = '') and (FSvnItem.URL <> '') then
+      begin
+        EncodedURL := svn_path_uri_encode(PAnsiChar(UTF8Encode(FSvnItem.URL)), SubPool);
+        SL := TStringList.Create;
+        try
+          SL.Add(EncodedURL);
+          Targets := FSvnItem.SvnClient.StringListToAprArray(SL, SubPool);
+        finally
+          SL.Free;
+        end;
+      end
+      else
+        Targets := FSvnItem.SvnClient.PathNamesToAprArray([FSvnItem.SvnPathName], SubPool);
       FSvnItem.SvnClient.FCancelled := False;
       svn_client_create_context(PCtx, SubPool);
       PCtx^ := FSvnItem.SvnClient.Ctx^;
