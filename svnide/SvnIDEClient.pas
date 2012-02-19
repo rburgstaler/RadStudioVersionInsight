@@ -45,11 +45,14 @@ uses SvnClient, svn_client, Classes, SysUtils, SvnIDEColors;
 type
   TSvnOptions = class(TObject)
   private
+    FBlameOptions: TSvnBlameOptions;
     FDeleteBackupFilesAfterCommit: Boolean;
   public
     constructor Create;
+    destructor Destroy; override;
     procedure Load;
     procedure Save;
+    property BlameOptions: TSvnBlameOptions read FBlameOptions;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
   end;
 
@@ -86,6 +89,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure SettingsModified;
     property Colors: TSvnColors read FColors;
     property Options: TSvnOptions read FOptions;
     function SvnInitialize: Boolean;
@@ -117,6 +121,8 @@ const
  MaxURLHistory = 20;
  cOptions = 'Options';
  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
+ cBlameIgnoreEOL = 'BlameIgnoreEOL';
+ cBlameCompareSpaces = 'BlameCompareSpaces';
 
 type
   PSyncLoginPrompt = ^TSyncLoginPrompt;
@@ -170,14 +176,22 @@ end;
 constructor TSvnOptions.Create;
 begin
   inherited Create;
+  FBlameOptions := TSvnBlameOptions.Create;
   FDeleteBackupFilesAfterCommit := False;
   Load;
+end;
+
+destructor TSvnOptions.Destroy;
+begin
+  FBlameOptions.Free;
+  inherited Destroy;
 end;
 
 procedure TSvnOptions.Load;
 var
   Reg: TRegistry;
   BaseKey, Key: string;
+  IntValue: Integer;
 begin
   Reg := TRegistry.Create;
   try
@@ -188,6 +202,17 @@ begin
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+
+    Key := cBlameIgnoreEOL;
+    if Reg.ValueExists(Key) then
+      FBlameOptions.IgnoreEOL := Reg.ReadBool(Key);
+    Key := cBlameCompareSpaces;
+    if Reg.ValueExists(Key) then
+    begin
+      IntValue := Reg.ReadInteger(Key);
+      FBlameOptions.IgnoreSpace := IntValue = 1;
+      FBlameOptions.IgnoreSpaceAll := IntValue = 2;
+    end;
   finally
     Reg.Free;
   end;
@@ -197,12 +222,23 @@ procedure TSvnOptions.Save;
 var
   Reg: TRegistry;
   BaseKey: string;
+  IntValue: Integer;
 begin
   Reg := TRegistry.Create;
   try
     BaseKey := BaseRegKey + cOptions;
     Reg.OpenKey(BaseKey, True);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+
+    Reg.WriteBool(cBlameIgnoreEOL, FBlameOptions.IgnoreEOL);
+    if FBlameOptions.IgnoreSpaceAll then
+      IntValue := 2
+    else
+    if FBlameOptions.IgnoreSpace then
+      IntValue := 1
+    else
+      IntValue := 0;
+    Reg.WriteInteger(cBlameCompareSpaces, IntValue);
   finally
     Reg.Free;
   end;
@@ -270,6 +306,12 @@ begin
       end;
     end;
   end;
+end;
+
+procedure TSvnIDEClient.SettingsModified;
+begin
+  if FSvnInitialized then
+    SvnClient.BlameOptions.Assign(FOptions.BlameOptions);
 end;
 
 procedure TSvnIDEClient.SvnClientLoginPrompt(Sender: TObject; const Realm: string; var UserName, Password: string;
@@ -394,6 +436,7 @@ begin
   FSvnClient.OnSSLServerTrustPrompt := SvnClientSSLServerTrustPrompt;
   FSvnClient.OnSSLClientCertPrompt := SvnClientSSLClientCertPrompt;
   FSvnClient.OnSSLClientPasswordPrompt := SvnClientSSLClientPasswordPrompt;
+  FSvnClient.BlameOptions.Assign(FOptions.BlameOptions);
 
   FSvnClient.Initialize;
 end;

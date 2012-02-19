@@ -46,6 +46,11 @@ type
     cbStatusColorsEnabled: TCheckBox;
     GroupBox2: TGroupBox;
     cbDeleteBackupFilesAfterCommit: TCheckBox;
+    GroupBox5: TGroupBox;
+    IgnoreEOL: TCheckBox;
+    CompareSpace: TRadioButton;
+    IgnoreSpace: TRadioButton;
+    IgnoreAllSpace: TRadioButton;
   private
     { Private declarations }
   public
