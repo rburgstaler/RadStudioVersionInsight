@@ -52,6 +52,7 @@ resourcestring
   sPMMExpicitFiles = 'Files in this Project';
   sPMMRepo = 'Browse Repository';
   sPMMMerge = 'Merge';
+  sPMMRevert = 'Revert';
 
   sCommit = 'Commit';
   sUpdated = 'Updated';
