@@ -34,6 +34,7 @@ resourcestring
   sPMMRootDir = 'From Repository Root';
   sPMMProjectDir = 'From Project Directory';
   sPMMExpicitFiles = 'Files in this Project';
+  sPMMRevert = 'Revert';
 
   sCommit = 'Commit';
   sCommitCompleted = 'Commit completed at revision: %d';

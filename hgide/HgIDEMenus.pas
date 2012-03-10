@@ -68,6 +68,7 @@ const
   pmmpFileCommitSvnMenu = pmmpUserVersionControl + 1010;
   pmmpFileUpdateSvnMenu = pmmpUserVersionControl + 1020;
   pmmpFileRepoSvnMenu = pmmpUserVersionControl + 1030;
+  pmmpFileRevertSvnMenu = pmmpUserVersionControl + 1040;
 
 
 type
@@ -131,7 +132,7 @@ function RootDirectory(const HgClient: THgClient; const Path: string): string;
 implementation
 
 uses SysUtils, HgIDEConst, HgIDECommit{, SvnIDEUpdate, SvnIDEClean}, HgIDELog{,
-  SvnIDEImport}, HgIDECheckout{, SvnIDERepoBrowser};
+  SvnIDEImport}, HgIDECheckout{, SvnIDERepoBrowser}, HgIDERevert;
 
 const
   sMercurialName = 'versioninsight.mercurial';
@@ -179,7 +180,8 @@ var
   PMMProjectDirUpdate, PMMExpicitFilesUpdate, PMMFileUpdate,
   PMMParentCleanSvnMenu, PMMRootDirCleanSvnMenu, PMMProjectDirCleanSvnMenu,
   PMMParentLogHgMenu, PMMRootDirLogHgMenu, PMMProjectDirLogHgMenu,
-  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu: IOTAProjectManagerMenu;
+  PMMParentRepo, PMMRootDirRepo, PMMProjectDirRepo, PMMFileRepoSvnMenu,
+  PMMFileRevert: IOTAProjectManagerMenu;
 
 function RootDirectory(const HgClient: THgClient; const Path: string): string;
 var
@@ -573,6 +575,7 @@ begin
     ProjectManagerMenuList.Add(PMMFileCommit);
     ProjectManagerMenuList.Add(PMMFileUpdate);
     ProjectManagerMenuList.Add(PMMFileRepoSvnMenu);
+    ProjectManagerMenuList.Add(PMMFileRevert);
   end;
 end;
 
@@ -607,6 +610,7 @@ begin
   PMMProjectDirRepo := TProjectDirRepoSvnMenu.Create(ASvnIDEClient);
   PMMFileRepoSvnMenu := TFileRepoSvnMenu.Create(ASvnIDEClient);
   }
+  PMMFileRevert := TFileRevertHgMenu.Create(AHgIDEClient);
 end;
 
 procedure UnRegisterMenus;
@@ -633,6 +637,7 @@ begin
   PMMRootDirRepo := nil;
   PMMProjectDirRepo := nil;
   PMMFileRepoSvnMenu := nil;
+  PMMFileRevert := nil;
 end;
 
 { TParentHgMenu }
