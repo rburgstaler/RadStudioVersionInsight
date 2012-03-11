@@ -149,6 +149,7 @@ type
     FRefreshCallBack: TRefreshCallBack;
     FExecutingCheckAllClick: Boolean;
     FExecutingRefresh: Boolean;
+    FExecutingSelectedCheck: Boolean;
     FExecutingUnversionedParentCheck: Boolean;
     FItemList: TList<TSvnListViewItem>;
     FIndexList: TList<Integer>;
@@ -577,6 +578,7 @@ begin
   FRecentComments := TStringList.Create;
   FExecutingCheckAllClick := False;
   FExecutingRefresh := False;
+  FExecutingSelectedCheck := False;
   FExecutingUnversionedParentCheck := False;
   FChangesLists := TStringList.Create;
   FChangesLists.Sorted := True;
@@ -866,7 +868,8 @@ procedure TSvnCommitFrame.FilesItemChecked(Sender: TObject; Item: TListItem);
   end;
 
 var
-  I: Integer;
+  I, StartIdx: Integer;
+  Checked: Boolean;
 begin
   if Item.Data <> nil then
     FItemList[FIndexList[Integer(Item.Data) - 1]].Checked := Item.Checked;
@@ -880,6 +883,20 @@ begin
         UnversionedParentCheck(FItemList[FIndexList[Integer(Item.Data) - 1]]);
       finally
         FExecutingUnversionedParentCheck := False;
+      end;
+    end;
+    //when a selected item is checked/unchecked then check/uncheck all other selected items
+    if not FExecutingSelectedCheck and (Files.SelCount > 1) and Item.Selected then
+    begin
+      FExecutingSelectedCheck := True;
+      try
+        Checked := Item.Checked;
+        StartIdx := Files.Selected.Index;
+        for I := StartIdx to Files.Items.Count - 1 do
+          if Files.Items[I].Selected and (Files.Items[I] <> Item) then
+            Files.Items[I].Checked := Checked;
+      finally
+        FExecutingSelectedCheck := False;
       end;
     end;
     for I := 0 to Files.Items.Count - 1 do
