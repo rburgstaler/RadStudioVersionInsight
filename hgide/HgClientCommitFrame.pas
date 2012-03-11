@@ -140,12 +140,14 @@ type
     FItemList: TList<TSvnListViewItem>;
     FIndexList: TList<Integer>;
     FRefreshItemList: TObjectList<TSvnListViewItem>;
+    FSetAutoSizeColumnWidth: Boolean;
     FSortColumns: array of Integer;
     FSortOrder: Boolean;
     FRecentComments: TStringList;
     FSupportsExternals: Boolean;
     FURL: string;
     FNoFiles: Boolean;
+    FUpdateCount: Integer;
     procedure CMRelease(var Message: TMessage); message CM_RELEASE;
     procedure DoRefresh;
     function GetSvnEditState: TSvnEditState;
@@ -341,8 +343,17 @@ begin
 end;
 
 procedure THgCommitFrame.BeginUpdate;
+var
+  I: Integer;
 begin
   Files.Items.BeginUpdate;
+  if FUpdateCount = 0 then
+  begin
+    FSetAutoSizeColumnWidth := False;
+    for I := 0 to Files.Columns.Count - 1 do
+      Files.Columns.Items[I].Width := Files.StringWidth(Files.Columns[I].Caption) + 14;
+  end;
+  Inc(FUpdateCount);
 end;
 
 procedure THgCommitFrame.CheckAllClick(Sender: TObject);
@@ -442,6 +453,8 @@ begin
   FNoFiles := False;
   FAllowEmptyComment := True;
   FSupportsExternals := True;
+  FSetAutoSizeColumnWidth := False;
+  FUpdateCount := 0;
 end;
 
 destructor THgCommitFrame.Destroy;
@@ -552,8 +565,21 @@ begin
 end;
 
 procedure THgCommitFrame.EndUpdate;
+var
+  I: Integer;
 begin
   Files.CustomSort(@ColumnSort, LPARAM(Self));
+  Dec(FUpdateCount);
+  if FUpdateCount <= 0 then
+  begin
+    FUpdateCount := 0;
+    if FSetAutoSizeColumnWidth then
+    begin
+      for I := 0 to Files.Columns.Count - 1 do
+        Files.Columns.Items[I].Width := -1;
+      FSetAutoSizeColumnWidth := False;
+    end;
+  end;
   Files.Items.EndUpdate;
 end;
 
@@ -961,7 +987,7 @@ begin
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   try
-    Files.Items.BeginUpdate;
+    BeginUpdate;
     try
       FNoFiles := False;
       Files.Clear;
@@ -976,7 +1002,7 @@ begin
           Files.Columns.Items[I].Width := -2;
       end;
     finally
-      Files.Items.EndUpdate;
+      EndUpdate;
     end;
     UpdateCountLabel;
   finally
@@ -1351,8 +1377,11 @@ begin
     ListItem.ImageIndex := HgImageModule.GetShellImageIndex(SvnListItem.PathName);
     if FirstAdded then
     begin
-      for I := 0 to Files.Columns.Count - 1 do
-        Files.Columns.Items[I].Width := -1;
+      if FUpdateCount > 0 then
+        FSetAutoSizeColumnWidth := True
+      else
+        for I := 0 to Files.Columns.Count - 1 do
+          Files.Columns.Items[I].Width := -1;
       FNoFiles := False;
     end;
   end;
