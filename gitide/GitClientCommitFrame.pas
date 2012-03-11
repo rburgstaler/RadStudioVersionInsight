@@ -758,8 +758,9 @@ begin
         FExecutingSelectedCheck := False;
       end;
     end;
+    Checked := Item.Checked;
     for I := 0 to Files.Items.Count - 1 do
-      if Files.Items[I].Checked <> Item.Checked then
+      if Files.Items[I].Checked <> Checked then
       begin
         CheckAll.State := cbGrayed;
         UpdateCommitButton;
