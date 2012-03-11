@@ -899,8 +899,9 @@ begin
         FExecutingSelectedCheck := False;
       end;
     end;
+    Checked := GetNormalizedCheckState(Item);
     for I := 0 to Files.Items.Count - 1 do
-      if GetNormalizedCheckState(Files.Items[I]) <> GetNormalizedCheckState(Item) then
+      if GetNormalizedCheckState(Files.Items[I]) <> Checked then
       begin
         CheckAll.State := cbGrayed;
         UpdateCommitButton;
