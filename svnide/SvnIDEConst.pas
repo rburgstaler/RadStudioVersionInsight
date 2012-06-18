@@ -53,6 +53,7 @@ resourcestring
   sPMMRepo = 'Browse Repository';
   sPMMMerge = 'Merge';
   sPMMRevert = 'Revert';
+  sPMMSwitch = 'Switch';
 
   sCommit = 'Commit';
   sUpdated = 'Updated';
@@ -72,6 +73,7 @@ resourcestring
   sMergeDialogCaption = 'Merge revisions %s - %s of %s into %s';
   sMergeDialogCaptionRange = 'Merge revisions %s of %s into %s';
   sHead = 'HEAD';
+  sSwitchDialogCaption = '%s - Switch';
   sRetrievingFileRevision = 'Retrieving %s revision %d';
   sSavingFileRevision = 'Saving %s revision %d';
 
