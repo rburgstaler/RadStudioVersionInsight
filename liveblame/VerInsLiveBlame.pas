@@ -655,7 +655,7 @@ begin
   ATargetCanvas.Font.Name := 'Courier New';
   ATargetCanvas.Font.Size := 10;
   S := ADeleteLines.Hint;
-  ATargetCanvas.TextRect(R, S, []);
+  ATargetCanvas.TextRect(R, S, [tfNoPrefix]);
 end;
 
 procedure TBlameHintWindow.PaintHint(ATargetCanvas: TCanvas; ARevision: TRevisionColor; ARect: TRect);
@@ -712,8 +712,8 @@ begin
   ATargetCanvas.TextRect(R, S, [tfCalcRect]);
   }
   RLogMessage := Rect(4, 76, 300, 300);
-  ATargetCanvas.TextRect(RLogMessage, S, [tfCalcRect]);
-  ATargetCanvas.TextRect(RLogMessage, S, []);
+  ATargetCanvas.TextRect(RLogMessage, S, [tfCalcRect, tfNoPrefix]);
+  ATargetCanvas.TextRect(RLogMessage, S, [tfNoPrefix]);
 end;
 
 function TBlameHintWindow.CalcHintRect(MaxWidth: Integer;
@@ -1749,7 +1749,7 @@ begin
     R := TargetCanvas.ClipRect;
     R := Rect(0, 0, 80, 76);
     S := ADeletedLines.Hint;
-    TargetCanvas.TextRect(R, S, [tfCalcRect]);
+    TargetCanvas.TextRect(R, S, [tfCalcRect, tfNoPrefix]);
     R.Bottom := R.Bottom + 4;
     ARect := R;
     Result := True;
@@ -1792,7 +1792,7 @@ begin
     R := Rect(0, 0, 80, 76);
     S := ARevision.LineHistoryRevision.Comment;
     RLogMessage := Rect(4, 76, 300, 300);
-    TargetCanvas.TextRect(RLogMessage, S, [tfCalcRect]);
+    TargetCanvas.TextRect(RLogMessage, S, [tfCalcRect, tfNoPrefix]);
     R.Bottom := RLogMessage.Bottom + 4;
     if R.Right < RLogMessage.Right + 4 then
       R.Right := RLogMessage.Right + 4;
