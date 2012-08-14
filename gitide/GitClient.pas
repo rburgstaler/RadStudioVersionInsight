@@ -833,7 +833,6 @@ function TGitClient.Commit(AFileList: TStringList; const AMessage: string; const
 var
   I, P, Res: Integer;
   CmdLine, Output, S: string;
-  EncodedMessage: RawByteString;
   CurrentDir: string;
 begin
   Result := geUnknown;
@@ -846,11 +845,7 @@ begin
     FLastCommitInfoHash := '';
     CurrentDir := ExtractFilePath(AFileList[0]);
 
-    //this seems to be the only way to pass the UTF-8 correctly
-    EncodedMessage := UTF8Encode(AMessage);
-    SetCodePage(EncodedMessage, 0, False);
-
-    CmdLine := GitExecutable + ' commit -m ' + AnsiQuotedStr(EncodedMessage, '"');
+    CmdLine := GitExecutable + ' commit -m ' + AnsiQuotedStr(AMessage, '"');
     if AUser <> '' then
       CmdLine := CmdLine + ' --author ' + AnsiQuotedStr(AUser, '"');
     CmdLine := CmdLine + ' -o';
