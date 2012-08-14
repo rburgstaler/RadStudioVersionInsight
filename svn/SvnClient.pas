@@ -684,6 +684,8 @@ type
       Callback: TSvnListCallback = nil; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
     procedure List(const PathName: string; Depth: TSvnDepth; FetchLocks: Boolean; ListStrings: TStrings;
       DirEntryFields: DWORD = SVN_DIRENT_ALL; Revision: TSvnRevNum = -1; PegRevision: TSvnRevNum = -1; SubPool: PAprPool = nil); overload;
+    procedure Lock(PathNames: TStrings; const Comment: string; Callback: TSvnNotifyCallback = nil;
+      StealLock: TSvnBoolean = False; SubPool: PAprPool = nil);
     procedure Merge(const Source1: string; Revision1: TSvnRevNum; const Source2: string; Revision2: TSvnRevNum;
       const TargetWcpath: string; Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
       Depth: TSvnDepth = svnDepthInfinity; IgnoreAncestry: TSvnBoolean = False; Force: TSvnBoolean = False;
@@ -713,6 +715,8 @@ type
       Callback: TSvnNotifyCallback = nil; SvnCancelCallback: TSvnCancelCallback = nil;
       Depth: TSvnDepth = svnDepthInfinity; DepthIsSticky: TSvnBoolean = False;
       IgnoreExternals: TSvnBoolean = False; SubPool: PAprPool = nil);
+    procedure Unlock(PathNames: TStrings; Callback: TSvnNotifyCallback = nil; BreakLock: TSvnBoolean = False;
+      SubPool: PAprPool = nil);
     procedure Update(PathNames: TStrings; Callback: TSvnNotifyCallback = nil; Recurse: Boolean = True;
       IgnoreExternals: Boolean = False; ConflictCallBack: TSvnConflictCallback = nil;
       SvnCancelCallback: TSvnCancelCallback = nil; SubPool: PAprPool = nil);
@@ -4525,6 +4529,30 @@ begin
   end;
 end;
 
+procedure TSvnClient.Lock(PathNames: TStrings; const Comment: string; Callback: TSvnNotifyCallback = nil;
+  StealLock: TSvnBoolean = False; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  Paths: PAprArrayHeader;
+  AdjustedComment: string;
+begin
+  if not Initialized then
+    Initialize;
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    Paths := PathNamesToAprArray(PathNames, SubPool);
+    Assert(SvnLineBreak = #10);
+    AdjustedComment := AdjustLineBreaks(Comment, tlbsLF);
+    FNotifyCallback := Callback;
+    SvnCheck(svn_client_lock(Paths, PAnsiChar(UTF8Encode(AdjustedComment)), StealLock, FCtx, SubPool));
+  finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
 function TSvnClient.MatchGlobalIgnores(const PathName: string; SubPool: PAprPool = nil): Boolean;
 var
   NewPool: Boolean;
@@ -4989,6 +5017,27 @@ begin
     end;
   finally
     FNotifyCallback := nil;
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+procedure TSvnClient.Unlock(PathNames: TStrings; Callback: TSvnNotifyCallback = nil;
+  BreakLock: TSvnBoolean = False; SubPool: PAprPool = nil);
+var
+  NewPool: Boolean;
+  Paths: PAprArrayHeader;
+begin
+  if not Initialized then
+    Initialize;
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    Paths := PathNamesToAprArray(PathNames, SubPool);
+    FNotifyCallback := Callback;
+    SvnCheck(svn_client_unlock(Paths, BreakLock, FCtx, SubPool));
+  finally
     if NewPool then
       apr_pool_destroy(SubPool);
   end;
