@@ -389,7 +389,7 @@ begin
 end;
 
 function Execute(const CommandLine: string; OutputLineCallback: TTextHandler; RawOutput: Boolean = False;
-  AbortPtr: PBoolean = nil; const CurrentDir: string = ''): Cardinal; overload; overload;
+  AbortPtr: PBoolean = nil; const CurrentDir: string = ''): Cardinal; overload;
 var
   Dummy: string;
 begin
