@@ -47,6 +47,7 @@ type
   private
     FBlameOptions: TSvnBlameOptions;
     FDeleteBackupFilesAfterCommit: Boolean;
+    FKeepCommitViewOpenAfterCommit: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -54,6 +55,7 @@ type
     procedure Save;
     property BlameOptions: TSvnBlameOptions read FBlameOptions;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+    property KeepCommitViewOpenAfterCommit: Boolean read FKeepCommitViewOpenAfterCommit write FKeepCommitViewOpenAfterCommit;
   end;
 
   TSvnIDEClient = class
@@ -121,6 +123,7 @@ const
  MaxURLHistory = 20;
  cOptions = 'Options';
  cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
+ cKeepCommitViewOpenAfterCommit = 'KeepCommitViewOpenAfterCommit';
  cBlameIgnoreEOL = 'BlameIgnoreEOL';
  cBlameCompareSpaces = 'BlameCompareSpaces';
 
@@ -178,6 +181,7 @@ begin
   inherited Create;
   FBlameOptions := TSvnBlameOptions.Create;
   FDeleteBackupFilesAfterCommit := False;
+  FKeepCommitViewOpenAfterCommit := False;
   Load;
 end;
 
@@ -202,6 +206,9 @@ begin
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+    Key := cKeepCommitViewOpenAfterCommit;
+    if Reg.ValueExists(Key) then
+      FKeepCommitViewOpenAfterCommit := Reg.ReadBool(Key);
 
     Key := cBlameIgnoreEOL;
     if Reg.ValueExists(Key) then
@@ -229,6 +236,7 @@ begin
     BaseKey := BaseRegKey + cOptions;
     Reg.OpenKey(BaseKey, True);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+    Reg.WriteBool(cKeepCommitViewOpenAfterCommit, FKeepCommitViewOpenAfterCommit);
 
     Reg.WriteBool(cBlameIgnoreEOL, FBlameOptions.IgnoreEOL);
     if FBlameOptions.IgnoreSpaceAll then

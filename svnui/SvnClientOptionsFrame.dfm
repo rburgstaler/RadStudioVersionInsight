@@ -2,7 +2,7 @@ object SvnOptionsFrame: TSvnOptionsFrame
   Left = 0
   Top = 0
   Width = 465
-  Height = 421
+  Height = 469
   TabOrder = 0
   object GroupBox1: TGroupBox
     Left = 8
@@ -104,7 +104,7 @@ object SvnOptionsFrame: TSvnOptionsFrame
     Left = 8
     Top = 207
     Width = 305
-    Height = 50
+    Height = 122
     Caption = ' Options '
     TabOrder = 1
     object cbDeleteBackupFilesAfterCommit: TCheckBox
@@ -115,10 +115,18 @@ object SvnOptionsFrame: TSvnOptionsFrame
       Caption = 'Delete backup files after commit'
       TabOrder = 0
     end
+    object cbKeepCommitViewOpenAfterCommit: TCheckBox
+      Left = 5
+      Top = 94
+      Width = 212
+      Height = 17
+      Caption = 'Keep Commit View open after commit'
+      TabOrder = 3
+    end
   end
   object GroupBox5: TGroupBox
     Left = 8
-    Top = 287
+    Top = 335
     Width = 305
     Height = 122
     Caption = ' Blame : Diff options '

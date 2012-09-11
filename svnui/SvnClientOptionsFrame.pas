@@ -51,6 +51,7 @@ type
     CompareSpace: TRadioButton;
     IgnoreSpace: TRadioButton;
     IgnoreAllSpace: TRadioButton;
+    cbKeepCommitViewOpenAfterCommit: TCheckBox;
   private
     { Private declarations }
   public

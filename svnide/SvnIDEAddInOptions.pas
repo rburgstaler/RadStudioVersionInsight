@@ -69,6 +69,7 @@ begin
     IDEClient.Colors.Colors := Colors;
     IDEClient.Colors.Save;
     IDEClient.Options.DeleteBackupFilesAfterCommit := FFrame.cbDeleteBackupFilesAfterCommit.Checked;
+    IDEClient.Options.KeepCommitViewOpenAfterCommit := FFrame.cbKeepCommitViewOpenAfterCommit.Checked;
     IDEClient.Options.BlameOptions.IgnoreEOL := FFrame.IgnoreEOL.Checked;
     IDEClient.Options.BlameOptions.IgnoreSpace := FFrame.IgnoreSpace.Checked;
     IDEClient.Options.BlameOptions.IgnoreSpaceAll := FFrame.IgnoreAllSpace.Checked;
@@ -87,6 +88,7 @@ begin
   FFrame.cboxMerged.Selected := IDEClient.Colors.Colors[ssckMerged];
   FFrame.cboxModified.Selected := IDEClient.Colors.Colors[ssckModified];
   FFrame.cbDeleteBackupFilesAfterCommit.Checked := IDEClient.Options.DeleteBackupFilesAfterCommit;
+  FFrame.cbKeepCommitViewOpenAfterCommit.Checked := IDEClient.Options.KeepCommitViewOpenAfterCommit;
   FFrame.IgnoreEOL.Checked := IDEClient.Options.BlameOptions.IgnoreEOL;
   if IDEClient.Options.BlameOptions.IgnoreSpaceAll then
     FFrame.IgnoreAllSpace.Checked := True
