@@ -69,7 +69,7 @@ uses
   {$IFDEF SVNINTERNAL}
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
-  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry;
+  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes;
 
 procedure Register;
 begin
@@ -152,37 +152,6 @@ const
   WM_BLAME_UPDATE = WM_USER + 2;
 
 type
-  TJVCSLineHistoryRevision = class(TObject)
-  private
-    FDate: TDateTime;
-    FDateStr: string;
-    FRevisionStr: string;
-    FOrgUserStr: string;
-    FUserStr: string;
-    FComment: string;
-  public
-    property Date: TDateTime read FDate;
-    property DateStr: string read FDateStr;
-    property OrgUserStr: string read FOrgUserStr;
-    property RevisionStr: string read FRevisionStr;
-    property UserStr: string read FUserStr;
-    property Comment: string read FComment;
-  end;
-
-  TRevisionColor = class(TObject)
-  private
-    FDateColor: TColor;
-    FRevisionColor: TColor;
-    FLineHistoryRevision: TJVCSLineHistoryRevision;
-    FUserColor: TColor;
-  public
-    constructor Create(ALineHistoryRevision: TJVCSLineHistoryRevision);
-    property DateColor: TColor read FDateColor write FDateColor;
-    property RevisionColor: TColor read FRevisionColor write FRevisionColor;
-    property LineHistoryRevision: TJVCSLineHistoryRevision read FLineHistoryRevision;
-    property UserColor: TColor read FUserColor write FUserColor;
-  end;
-
   TRevisionRectangle = class(TObject)
   private
     FRect: TRect;
@@ -233,17 +202,6 @@ type
     procedure Add(APoint: TPoint; ADeletedLines: TDeletedLines);
     function Find(AX, AY: Integer): Integer;
   end;
-
-{ TRevisionColor }
-
-constructor TRevisionColor.Create(ALineHistoryRevision: TJVCSLineHistoryRevision);
-begin
-  inherited Create;
-  FDateColor := clNone;
-  FRevisionColor := clNone;
-  FLineHistoryRevision := ALineHistoryRevision;
-  FUserColor := clNone;
-end;
 
 { TRevisionRectangle }
 
@@ -991,12 +949,12 @@ begin
   for I := 0 to FRevisions.Count - 1 do
   begin
     LHRevision := FRevisions[I];
-    Idx := ASettings.UserSettingsList.IndexOfUser(LHRevision.FOrgUserStr);
+    Idx := ASettings.UserSettingsList.IndexOfUser(LHRevision.OrgUserStr);
     if Idx <> -1 then
-      LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+      LHRevision.UserStr := ASettings.UserSettingsList[Idx].VisibleName
     else
-      LHRevision.FUserStr := LHRevision.FOrgUserStr;
-    LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, LHRevision.FDate);
+      LHRevision.UserStr := LHRevision.OrgUserStr;
+    LHRevision.DateStr := GetDateStr(ASettings.DateFormat, LHRevision.Date);
   end;
 end;
 
@@ -1029,30 +987,30 @@ begin
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         LHRevision := FRevisions.Last;
         RevisionsDict.Add(FSvnItem.HistoryItems[I].Revision, LHRevision);
-        LHRevision.FRevisionStr := IntToStr(FSvnItem.HistoryItems[I].Revision);
-        LHRevision.FOrgUserStr := FSvnItem.HistoryItems[I].Author;
+        LHRevision.RevisionStr := IntToStr(FSvnItem.HistoryItems[I].Revision);
+        LHRevision.OrgUserStr := FSvnItem.HistoryItems[I].Author;
         Idx := ASettings.UserSettingsList.IndexOfUser(FSvnItem.HistoryItems[I].Author);
         if Idx <> -1 then
-          LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+          LHRevision.UserStr := ASettings.UserSettingsList[Idx].VisibleName
         else
-          LHRevision.FUserStr := FSvnItem.HistoryItems[I].Author;
-        LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, FSvnItem.HistoryItems[I].Time);
-        LHRevision.FDate := FSvnItem.HistoryItems[I].Time;
-        LHRevision.FComment := TrimRight(FSvnItem.HistoryItems[I].LogMessage);
+          LHRevision.UserStr := FSvnItem.HistoryItems[I].Author;
+        LHRevision.DateStr := GetDateStr(ASettings.DateFormat, FSvnItem.HistoryItems[I].Time);
+        LHRevision.Date := FSvnItem.HistoryItems[I].Time;
+        LHRevision.Comment := TrimRight(FSvnItem.HistoryItems[I].LogMessage);
       end;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FBufferRevision := FRevisions.Last;
-      FBufferRevision.FRevisionStr := 'Buff';
-      FBufferRevision.FUserStr := 'User';//TODO:
+      FBufferRevision.RevisionStr := 'Buff';
+      FBufferRevision.UserStr := 'User';//TODO:
 
-      FBufferRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-      FBufferRevision.FDate := Now;
+      FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+      FBufferRevision.Date := Now;
       FRevisions.Add(TJVCSLineHistoryRevision.Create);
       FFileRevision := FRevisions.Last;
-      FFileRevision.FRevisionStr := 'File';
-      FFileRevision.FUserStr := 'User';//TODO:
-      FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-      FFileRevision.FDate := Now;
+      FFileRevision.RevisionStr := 'File';
+      FFileRevision.UserStr := 'User';//TODO:
+      FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+      FFileRevision.Date := Now;
       for I := 1 to FSvnItem.HistoryItems[0].BlameCount do
       begin
         if not RevisionsDict.TryGetValue(FSvnItem.HistoryItems[0].BlameItems[I].Revision, LHRevision) then
@@ -1144,30 +1102,30 @@ begin
           FRevisions.Add(TJVCSLineHistoryRevision.Create);
           LHRevision := FRevisions.Last;
           RevisionsDict.Add(FFileHistory.Ident[I], LHRevision);
-          LHRevision.FRevisionStr := FFileHistory.Ident[I];
-          LHRevision.FOrgUserStr := FFileHistory.Author[I];
+          LHRevision.RevisionStr := FFileHistory.Ident[I];
+          LHRevision.OrgUserStr := FFileHistory.Author[I];
           Idx := ASettings.UserSettingsList.IndexOfUser(FFileHistory.Author[I]);
           if Idx <> -1 then
-            LHRevision.FUserStr := ASettings.UserSettingsList[Idx].VisibleName
+            LHRevision.UserStr := ASettings.UserSettingsList[Idx].VisibleName
           else
-            LHRevision.FUserStr := FFileHistory.Author[I];
-          LHRevision.FDateStr := GetDateStr(ASettings.DateFormat, UTCToTzDateTime(FFileHistory.Date[I]));
-          LHRevision.FDate := UTCToTzDateTime(FFileHistory.Date[I]);
-          LHRevision.FComment := TrimRight(FFileHistory.Comment[I]);
+            LHRevision.UserStr := FFileHistory.Author[I];
+          LHRevision.DateStr := GetDateStr(ASettings.DateFormat, UTCToTzDateTime(FFileHistory.Date[I]));
+          LHRevision.Date := UTCToTzDateTime(FFileHistory.Date[I]);
+          LHRevision.Comment := TrimRight(FFileHistory.Comment[I]);
         end;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FBufferRevision := FRevisions.Last;
-        FBufferRevision.FRevisionStr := 'Buff';
-        FBufferRevision.FUserStr := 'User';//TODO:
+        FBufferRevision.RevisionStr := 'Buff';
+        FBufferRevision.UserStr := 'User';//TODO:
 
-        FBufferRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-        FBufferRevision.FDate := Now;
+        FBufferRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+        FBufferRevision.Date := Now;
         FRevisions.Add(TJVCSLineHistoryRevision.Create);
         FFileRevision := FRevisions.Last;
-        FFileRevision.FRevisionStr := 'File';
-        FFileRevision.FUserStr := 'User';//TODO:
-        FFileRevision.FDateStr := GetDateStr(ASettings.DateFormat, Now);
-        FFileRevision.FDate := Now;
+        FFileRevision.RevisionStr := 'File';
+        FFileRevision.UserStr := 'User';//TODO:
+        FFileRevision.DateStr := GetDateStr(ASettings.DateFormat, Now);
+        FFileRevision.Date := Now;
         if FAnnotationLineProviderHelperUpdateRequired then
         begin
           FAnnotationLineProviderHelper.Clear;
@@ -2548,7 +2506,7 @@ begin
   try
     TSL.LoadFromFile(FFileName);
     FileAge(FFileName, DT);
-    FFileRevision.FDate := DT - 1 / 86400;
+    FFileRevision.Date := DT - 1 / 86400;
     {
     TSL2.LoadFromFile(ExtractFilePath(FFileName) + '.svn\text-base\' + ExtractFileName(FFileName) + '.svn-base');//TODO:remove
     }
@@ -2618,8 +2576,8 @@ begin
   begin
     FLiveBlameData.FLastAge := EC.GetContentAge;
     FLiveBlameData.FLastStreamSize := StreamStat.cbSize;
-    FLiveBlameData.FBufferRevision.FDate := Now;//FLastAge + 1 / 24 - 1 / 86400;
-    FLiveBlameData.FBufferRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FLastAge);
+    FLiveBlameData.FBufferRevision.Date := Now;//FLastAge + 1 / 24 - 1 / 86400;
+    FLiveBlameData.FBufferRevision.DateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FLastAge);
     MS := TMemoryStream.Create;
     try
       SA := TStreamAdapter.Create(MS);
@@ -3653,8 +3611,8 @@ begin
         FLiveBlameData.FStage := 3;
       if FLiveBlameData.FBlameInfoAvailable then
       begin
-        FLiveBlameData.FBufferRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FBufferRevision.FDate);
-        FLiveBlameData.FFileRevision.FDateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FFileRevision.FDate);
+        FLiveBlameData.FBufferRevision.DateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FBufferRevision.Date);
+        FLiveBlameData.FFileRevision.DateStr := GetDateStr(FSettings.DateFormat, FLiveBlameData.FFileRevision.Date);
       end;
 
       FRevisionRectangles.Clear;
