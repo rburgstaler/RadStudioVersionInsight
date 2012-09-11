@@ -51,6 +51,7 @@ type
     cbStatusColorsEnabled: TCheckBox;
     GroupBox3: TGroupBox;
     cbDeleteBackupFilesAfterCommit: TCheckBox;
+    cbKeepCommitViewOpenAfterCommit: TCheckBox;
     procedure SpeedButton1Click(Sender: TObject);
   private
     { Private declarations }

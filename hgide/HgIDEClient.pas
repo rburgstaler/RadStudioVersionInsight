@@ -33,11 +33,13 @@ type
   THgOptions = class(TObject)
   private
     FDeleteBackupFilesAfterCommit: Boolean;
+    FKeepCommitViewOpenAfterCommit: Boolean;
   public
     constructor Create;
     procedure Load;
     procedure Save;
     property DeleteBackupFilesAfterCommit: Boolean read FDeleteBackupFilesAfterCommit write FDeleteBackupFilesAfterCommit;
+    property KeepCommitViewOpenAfterCommit: Boolean read FKeepCommitViewOpenAfterCommit write FKeepCommitViewOpenAfterCommit;
   end;
 
   THgIDEClient = class(TObject)
@@ -80,6 +82,7 @@ const
   MaxSourceRepoHistory = 20;
   cOptions = 'Options';
   cDeleteBackupFilesAfterCommit = 'DeleteBackupFilesAfterCommit';
+  cKeepCommitViewOpenAfterCommit = 'KeepCommitViewOpenAfterCommit';
 
 procedure Register;
 begin
@@ -94,6 +97,7 @@ constructor THgOptions.Create;
 begin
   inherited Create;
   FDeleteBackupFilesAfterCommit := False;
+  FKeepCommitViewOpenAfterCommit := False;
   Load;
 end;
 
@@ -111,6 +115,9 @@ begin
     Key := cDeleteBackupFilesAfterCommit;
     if Reg.ValueExists(Key) then
       FDeleteBackupFilesAfterCommit := Reg.ReadBool(Key);
+    Key := cKeepCommitViewOpenAfterCommit;
+    if Reg.ValueExists(Key) then
+      FKeepCommitViewOpenAfterCommit := Reg.ReadBool(Key);
   finally
     Reg.Free;
   end;
@@ -126,6 +133,7 @@ begin
     BaseKey := BaseRegKey + cOptions;
     Reg.OpenKey(BaseKey, True);
     Reg.WriteBool(cDeleteBackupFilesAfterCommit, FDeleteBackupFilesAfterCommit);
+    Reg.WriteBool(cKeepCommitViewOpenAfterCommit, FKeepCommitViewOpenAfterCommit);
   finally
     Reg.Free;
   end;

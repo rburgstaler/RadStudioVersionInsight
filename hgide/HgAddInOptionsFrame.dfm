@@ -2,7 +2,7 @@ object frmHgTestsOptions: TfrmHgTestsOptions
   Left = 0
   Top = 0
   Width = 414
-  Height = 341
+  Height = 413
   TabOrder = 0
   object GroupBox1: TGroupBox
     Left = 8
@@ -134,7 +134,7 @@ object frmHgTestsOptions: TfrmHgTestsOptions
     Left = 8
     Top = 278
     Width = 305
-    Height = 50
+    Height = 122
     Caption = ' Options '
     TabOrder = 2
     object cbDeleteBackupFilesAfterCommit: TCheckBox
@@ -144,6 +144,14 @@ object frmHgTestsOptions: TfrmHgTestsOptions
       Height = 17
       Caption = 'Delete backup files after commit'
       TabOrder = 0
+    end
+    object cbKeepCommitViewOpenAfterCommit: TCheckBox
+      Left = 5
+      Top = 94
+      Width = 212
+      Height = 17
+      Caption = 'Keep Commit View open after commit'
+      TabOrder = 3
     end
   end
   object OpenDialog1: TOpenDialog
