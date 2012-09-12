@@ -69,7 +69,8 @@ uses
   {$IFDEF SVNINTERNAL}
   SvnIDEClient, SvnClient, SvnIDETypes,
   {$ENDIF SVNINTERNAL}
-  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes;
+  VerInsIDETypes, VerInsIDEBlameAddInOptions, VerInsBlameSettings, Registry, VerInsLiveBlameTypes,
+  Rtti, Events, VerInsIDEDockInfo;
 
 procedure Register;
 begin
@@ -509,6 +510,7 @@ type
     FMenuItem2: TMenuItem;
     FMenuItem3: TMenuItem;
     FConfigMenuItem: TMenuItem;
+    FShowInfoFormMenuItem: TMenuItem;
     FLastPresetTimeStamp: TDateTime;
     FModificationColorFile: TColor;
     FModificationColorBuffer: TColor;
@@ -543,6 +545,8 @@ type
     procedure HandlePopupMenuPopup(Sender: TObject);
     procedure SetPreset(APresetID: Integer);
     function UpdateModificationColors: Boolean;
+    procedure InstallLineChangeHook;
+    procedure ChangeLineEvent(Sender: TObject);
   protected
     procedure SetEnabled(AValue: Boolean); override;
   public
@@ -1389,6 +1393,224 @@ begin
   Result := CallNextHookEx(GetMsgHook, nCode, wParam, lParam);
 end;
 
+type
+  TEditControlAddresses = class(TObject)
+  private
+    class var FEvCaretLineChangeOffset: Integer;
+    class var FLoaded: Boolean;
+    class var FLinesOffset: Integer;
+    class function ReadAddresses(AClass: TClass): Boolean;
+    class function ReadOffsets(AClass: TClass): Boolean;
+  end;
+
+{ TEditControlAddresses }
+
+class function TEditControlAddresses.ReadAddresses(AClass: TClass): Boolean;
+begin
+  Result := False;
+  if not FLoaded then
+  begin
+    FLoaded := True;
+    if ReadOffsets(AClass) then
+      Result := True;
+  end;
+end;
+
+class function TEditControlAddresses.ReadOffsets(AClass: TClass): Boolean;
+var
+  Ctx: TRttiContext;
+  RttiType: TRttiType;
+  F: TRttiField;
+begin
+  FEvCaretLineChangeOffset := -1;
+  FLinesOffset := -1;
+  Ctx := TRttiContext.Create;
+  try
+    RttiType := Ctx.GetType(AClass);
+    if Assigned(RttiType) then
+    begin
+      for F in RttiType.GetFields do
+        if F.Name = 'FEvCaretLineChange' then
+          FEvCaretLineChangeOffset := F.Offset
+        else
+        if F.Name = 'FLines' then
+          FLinesOffset := F.Offset;
+    end;
+    Result := (FEvCaretLineChangeOffset > 0) and (FLinesOffset > 0);
+  finally
+    Ctx.Free;
+  end;
+end;
+
+function GetMethodName(AEditControl: TObject; AInfoLine, ALastStopLine: Integer; var AMethodStartLine: Integer): string;
+var
+  I, P, L, MethodLine: Integer;
+  O: TObject;
+  Strings: TStrings;
+  S: string;
+begin
+  Result := '';
+  AMethodStartLine := AInfoLine;
+  TEditControlAddresses.ReadAddresses(AEditControl.ClassType);
+  if TEditControlAddresses.FLinesOffset > 0 then
+  begin
+    O := TObject(PDWord(Integer(AEditControl) + TEditControlAddresses.FLinesOffset)^);
+    if O is TStrings then
+    begin
+      Strings := TStrings(O);
+      if Strings.Count > AInfoLine - 1 then
+      begin
+        MethodLine := -1;
+        L := 0;
+        P := 0;
+        for I := AInfoLine downto ALastStopLine do
+        begin
+          S := AnsiUpperCase(Strings[I - 1]);
+          P := Pos('PROCEDURE', S);
+          if P > 0 then
+            L := Length('PROCEDURE');
+          if P = 0 then
+          begin
+            P := Pos('FUNCTION', S);
+            if P > 0 then
+              L := Length('FUNCTION');
+          end;
+          if P = 0 then
+          begin
+            P := Pos('CONSTRUCTOR', S);
+            if P > 0 then
+              L := Length('CONSTRUCTOR');
+          end;
+          if P = 0 then
+          begin
+            P := Pos('DESTRUCTOR', S);
+            if P > 0 then
+              L := Length('DESTRUCTOR');
+          end;
+          if P > 0 then
+          begin
+            MethodLine := I;
+            AMethodStartLine := I;
+            Break;
+          end;
+        end;
+        if (MethodLine > 0) and (P > 0) and (L > 0) then
+        begin
+          S := Strings[MethodLine - 1];
+          Delete(S, 1, P + L - 1);
+          for I := MethodLine + 1 to AInfoLine do
+            S := S + Strings[I - 1];
+          P := 0;
+          L := Length(S);
+          for I := 1 to L do
+            if CharInSet(S[I], ['(', ';', ':']) then
+            begin
+              P := I;
+              Break;
+            end;
+          if P > 0 then
+            Delete(S, P, MaxInt);
+          Result := Trim(S);
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure TLiveBlameEditorPanel.ChangeLineEvent(Sender: TObject);
+var
+  EditView: IOTAEditView;
+  EditPos: TOTAEditPos;
+  Revision, MethodRevision: TJVCSLineHistoryRevision;
+  Line, ZeroLine: Integer;
+  MR: IOTAModuleRegions;
+  R: TOTARegions;
+  Module: IOTAModule;
+  C, I, J, RevIdx, MaxRevIdx, LastStopLine, StartLine: Integer;
+  LiveBlameInformation: TLiveBlameInformation;
+  MethodSummary: TJVCSLineHistorySummary;
+  EC: TObject;
+  MethodName: string;
+begin
+  Revision := nil;
+  Line := -1;
+  EditView := (BorlandIDEServices as IOTAEditorServices).TopView;
+  if Assigned(EditView) then
+  begin
+    EditPos := EditView.CursorPos;
+    Line := EditPos.Line;
+    ZeroLine := Line - 1;
+    if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) then
+      Revision := FLiveBlameData.FLines[ZeroLine];
+  end;
+
+  MethodName := '';
+  LiveBlameInformation := TLiveBlameInformation.Create;
+  MethodSummary := TJVCSLineHistorySummary.Create;
+  try
+    if Assigned(Revision) then
+    begin
+      MethodRevision := nil;
+      MaxRevIdx := -1;
+      Module := (BorlandIDEServices as IOTAEditorServices).TopBuffer.Module;
+      if Supports(Module, IOTAModuleRegions, MR) then
+      begin
+        R := MR.GetRegions(Module.FileName);
+        LastStopLine := 1;
+        EC := GetEditControl;
+        for C := Low(R) to High(R) do
+          if R[C].RegionKind = rkMethod then
+          begin
+            StartLine := R[C].Start.Line;
+            if Assigned(EC) then
+              MethodName := GetMethodName(EC, R[C].Start.Line, LastStopLine, StartLine);
+            if (StartLine <= Line) and (R[C].Stop.Line >= Line) then
+            begin
+              for I := StartLine to R[C].Stop.Line do
+              begin
+                ZeroLine := I - 1;
+                if (ZeroLine >= 0) and (ZeroLine < FLiveBlameData.FLines.Count) then
+                begin
+                  RevIdx := -1;
+                  for J := 0 to Pred(FLiveBlameData.FRevisions.Count) do
+                    if FLiveBlameData.FRevisions[J].RevisionStr = FLiveBlameData.FLines[ZeroLine].RevisionStr then
+                    begin
+                      RevIdx := J;
+                      Break;
+                    end;
+                  if RevIdx > MaxRevIdx then
+                  begin
+                    MaxRevIdx := RevIdx;
+                    MethodRevision := FLiveBlameData.FLines[ZeroLine];
+                  end;
+                  MethodSummary.Add(FLiveBlameData.FLines[ZeroLine]);
+                end;
+              end;
+              Break;
+            end;
+            LastStopLine := R[C].Stop.Line;
+          end;
+      end;
+      LiveBlameInformation.AddRevisions(FLiveBlameData.FRevisions);
+      for I := 0 to Pred(FLiveBlameData.FRevisions.Count) do
+        DoGetRevisionColor(FLiveBlameData.FRevisions[I]);
+      LiveBlameInformation.AddRevisionColorsMapped(FLiveBlameData.FRevisionColorList);
+      LiveBlameInformation.SetLineRevisionMapped(Revision);
+      LiveBlameInformation.LineNo := Line;
+      if Assigned(MethodRevision) then
+      begin
+        LiveBlameInformation.SetLastMethodRevisionMapped(MethodRevision);
+        LiveBlameInformation.AssignMethodSummaryMapped(MethodSummary);
+        LiveBlameInformation.LineMethodName := MethodName;
+      end;
+    end;
+    UpdateLiveBlameInfo(LiveBlameInformation);
+  finally
+    MethodSummary.Free;
+    LiveBlameInformation.Free;
+  end;
+end;
+
 procedure TLiveBlameEditorPanel.CheckInstallHook;
 var
   EditControl: TObject;
@@ -2012,6 +2234,12 @@ begin
     FSettings.ShowUserInfoColor := True;
   end
   else
+  if Sender = FShowInfoFormMenuItem then
+  begin
+    ShowLiveBlameInfo;
+    ChangeLineEvent(nil);
+  end
+  else
   if Sender = FConfigMenuItem then
   begin
     (BorlandIDEServices as IOTAServices).GetEnvironmentOptions.EditOptions('Version Control', 'Blame');
@@ -2062,6 +2290,15 @@ begin
       MenuItem.Checked := (Presets.SelectedID > 0) and (Presets[I].ID = Presets.SelectedID);
       FPopupMenu.Items.Add(MenuItem);
     end;
+
+    MenuItem := TMenuItem.Create(FPopupMenu);
+    MenuItem.Caption := '-';
+    FPopupMenu.Items.Add(MenuItem);
+    FShowInfoFormMenuItem := TMenuItem.Create(FPopupMenu);
+    FShowInfoFormMenuItem.Caption := 'Show Info Form';
+    FShowInfoFormMenuItem.OnClick := HandlePopupMenu;
+    FPopupMenu.Items.Add(FShowInfoFormMenuItem);
+
     MenuItem := TMenuItem.Create(FPopupMenu);
     MenuItem.Caption := '-';
     FPopupMenu.Items.Add(MenuItem);
@@ -2086,6 +2323,24 @@ begin
   CompareRevisionThread.AddFile(FLiveBlameData.FFileName, ARevisionIDStr, '', FLiveBlameData.FFileHistory);
   {$ENDIF}
   CompareRevisionThread.Start;
+end;
+
+procedure TLiveBlameEditorPanel.InstallLineChangeHook;
+var
+  E: TObject;
+  Ev: TEvent;
+begin
+  E := GetEditControl;
+  if Assigned(E) then
+  begin
+    TEditControlAddresses.ReadAddresses(E.ClassType);
+    if TEditControlAddresses.FEvCaretLineChangeOffset > 0 then
+    begin
+      Ev := TEvent(Pointer(PDWORD(Integer(E) + TEditControlAddresses.FEvCaretLineChangeOffset)^));
+      if Ev.IndexOf(ChangeLineEvent) = -1 then
+        Ev.Add(ChangeLineEvent);
+    end;
+  end;
 end;
 
 procedure TLiveBlameEditorPanel.SetEnabled(AValue: Boolean);
@@ -2192,6 +2447,8 @@ begin
     UpdateGutterWidth;
     FPaintBox.Invalidate;
   end;
+  if Visible then
+    InstallLineChangeHook;
 end;
 
 procedure TLiveBlameEditorPanel.UnInstallHooks;
