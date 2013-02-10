@@ -1065,9 +1065,11 @@ begin
 end;
 
 procedure THgCommitFrame.ResolveActionExecute(Sender: TObject);
+{
 var
   I, StartIdx: Integer;
   SvnListViewItem: TSvnListViewItem;
+}
 begin
   {
   if Files.SelCount > 0 then
@@ -1090,9 +1092,11 @@ begin
 end;
 
 procedure THgCommitFrame.ResolveActionUpdate(Sender: TObject);
+{
 var
   I, StartIdx: Integer;
   ResolveState: Boolean;
+}
 begin
   {
   if Files.SelCount > 0 then

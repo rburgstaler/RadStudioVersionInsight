@@ -478,7 +478,7 @@ begin
 }
 var
   I: Integer;
-  TempBasePath: string;
+  //TempBasePath: string;
   FilesAndDirectoriesInRepo: TStringList;
 begin
   //TODO: add support for FRootType = rtExpicitFiles
