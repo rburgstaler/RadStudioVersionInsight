@@ -669,6 +669,9 @@ type
     procedure GetExternals(const PathName: string; Externals: TStrings; Recurse: Boolean = True);
     function GetHeadRevision(const URL: string; SubPool: PAprPool = nil): TSvnRevNum;
     function GetMaxRevision(const PathName: string; SubPool: PAprPool = nil): Integer;
+    function GetModifications4(const PathName: string; Callback: TSvnStatusCallback = nil;
+      Depth: TSvnDepth = svnDepthInfinity; Update: Boolean = False; IgnoreExternals: Boolean = False;
+      RecurseUnversioned: Boolean = False; SubPool: PAprPool = nil): TSvnRevNum;
     function GetModifications(const PathName: string; Callback: TSvnStatusCallback = nil;
       Recurse: Boolean = True; Update: Boolean = False; IgnoreExternals: Boolean = False;
       RecurseUnversioned: Boolean = False; SubPool: PAprPool = nil): TSvnRevNum;
@@ -1440,6 +1443,14 @@ begin
     Entry.Depth := status.entry.depth;
     Entry.Valid := True;
   end;
+end;
+
+//TODO: better name
+function WCStatus3_(baton: Pointer; path: PAnsiChar; status: PSvnWcStatus2; pool: PAprPool): PSvnError; cdecl;
+begin
+  if Assigned(status) then
+    TSvnClient(baton).DoWCStatus(path, status^);
+  Result := nil;
 end;
 
 function DummyInfoReceiver(baton: Pointer; path: PAnsiChar; const info: TSvnInfo; pool: PAprPool): PSvnError; cdecl;
@@ -4129,6 +4140,35 @@ begin
     SvnCheck(svn_wc_revision_status(Status, PAnsiChar(UTF8Encode(PathName)), nil, False, nil, nil, SubPool));
     Result := Status^.max_rev;
   finally
+    if NewPool then
+      apr_pool_destroy(SubPool);
+  end;
+end;
+
+function TSvnClient.GetModifications4(const PathName: string;
+  Callback: TSvnStatusCallback; Depth: TSvnDepth; Update, IgnoreExternals,
+  RecurseUnversioned: Boolean; SubPool: PAprPool): TSvnRevNum;
+var
+  NewPool: Boolean;
+  Revision: TSvnOptRevision;
+begin
+  Result := -1;
+  if not Initialized then
+    Initialize;
+
+  NewPool := not Assigned(SubPool);
+  if NewPool then
+    AprCheck(apr_pool_create_ex(SubPool, FPool, nil, FAllocator));
+  try
+    FillChar(Revision, SizeOf(TSvnOptRevision), 0);
+    Revision.Kind := svnOptRevisionHead;
+    FCancelled := False;
+    FRecurseUnversioned := RecurseUnversioned;
+    FStatusCallback := Callback;
+    SvnCheck(svn_client_status4(@Result, PAnsiChar(UTF8Encode(NativePathToSvnPath(PathName))), @Revision, WCStatus3_, Self,
+      Depth, False, Update, False, IgnoreExternals, nil, FCtx, SubPool));
+  finally
+    FStatusCallback := nil;
     if NewPool then
       apr_pool_destroy(SubPool);
   end;
