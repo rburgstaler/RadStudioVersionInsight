@@ -1521,6 +1521,22 @@ var
 
 //----- svn_base64.h ---------------------------------------------------------------------------------------------------
 
+//----- svn_checksum.h -------------------------------------------------------------------------------------------------
+
+type
+  TSvnChecksumKind = (
+    svnChecksumMd5,
+    svnChecksumSha1
+  );
+
+  PSvnChecksum = ^TSvnChecksum;
+  TSvnChecksum = record
+    digest: Pointer;
+    kind: TSvnChecksumKind;
+  end;
+
+//----- svn_checksum.h -------------------------------------------------------------------------------------------------
+
 //----- svn_delta.h ----------------------------------------------------------------------------------------------------
 
 type
@@ -2888,6 +2904,21 @@ type
     keep_local: TSvnBoolean;
     depth: TSvnDepth;
   end;
+  PSvnWcInfo = ^TSvnWcInfo;
+  TSvnWcInfo = record
+    schedule: TSvnWcSchedule;
+    copyfrom_url: PAnsiChar;
+    copyfrom_rev: TSvnRevNum;
+    checksum: PSvnChecksum;
+    changelist: PAnsiChar;
+    depth: TSvnDepth;
+    recorded_size: TSvnFileSize;
+    recorded_time: TAprTime;
+    conflicts: PAprArrayHeader;
+    wcroot_abspath: PAnsiChar;
+    moved_from_abspath: PAnsiChar;
+    moved_to_abspath: PAnsiChar;
+  end;
   PSvnWcEntryCallbacks2 = ^TSvnWcEntryCallbacks2;
   TSvnWcEntryCallbacks2 = record
     found_entry: function(path: PAnsiChar; entry: PSvnWcEntry; walk_baton: Pointer; pool: PAprPool): PSvnError; cdecl;
@@ -3528,7 +3559,7 @@ type
     last_changed_date: TAprTime;
     last_changed_author: PAnsiChar;
     lock: PSvnLock;
-    wc_info: Pointer;//TODO: actual type is svn_wc_info_t * (= PSvnWcInfo)
+    wc_info: PSvnWcInfo;
   end;
   TSvnClientInfoReceiver2 = function(baton: Pointer; abspath_or_url: PAnsiChar; info: PSvnClientInfo2;
     scratch_pool: PAprPool): PSvnError; cdecl;
