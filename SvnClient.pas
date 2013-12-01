@@ -776,7 +776,7 @@ type
 const
   SvnLineBreak = #10;
   SvnPathDelim = '/';
-  NodeKindStrings: array[TSvnNodeKind] of string = (SNodeKindNone, SNodeKindFile, SNodeKindDir, SNodeKindUnknown);
+  NodeKindStrings: array[TSvnNodeKind] of string = (SNodeKindNone, SNodeKindFile, SNodeKindDir, SNodeKindUnknown, SNodeKindSymlink);
 
 function AprTimeToDateTime(AprTime: TAprTime): TDateTime;
 function DateTimeToAprTime(Value: TDateTime): TAprTime;
@@ -1072,7 +1072,16 @@ const
     SWcNotifyChangelistSet, SWcNotifyChangelistClear, SWcNotifyChangelistMoved, SWcNotifyMergeBegin,
     SWcNotifyForeignMergeBegin, SWcNotifyUpdateReplace, SWcNotifyPropertyAdded, SWcNotifyPropertyModified,
     SWcNotifyPropertyDeleted, SWcNotifyPropertyDeletedNonexistent, SWcNotifyRevpropSet, SWcNotifyRevpropDeleted,
-    SWcNotifyMergeCompleted, SWcNotifyTreeConflict, SWcNotifyFailedExternal);
+    SWcNotifyMergeCompleted, SWcNotifyTreeConflict, SWcNotifyFailedExternal, SWcNotifyUpdateStarted,
+    SWcNotifyUpdateSkipObstruction, SWcNotifyUpdateSkipWorkingOnly, SWcNotifyUpdateSkipAccessDenied,
+    SWcNotifyUpdateExternalRemoved, SWcNotifyUpdateShadowedAdd, SWcNotifyUpdateShadowedUpdate,
+    SWcNotifyUpdateShadowedDelete, SWcNotifyMergeRecordInfo, SWcNotifyUpgradedPath, SWcNotifyMergeRecordInfoBegin,
+    SWcNotifyMergeElideInfo, SWcNotifyPatch, SWcNotifyPatchAppliedHunk, SWcNotifyPatchRejectedHunk,
+    SWcNotifyPatchHunkAlreadyApplied, SWcNotifyCommitCopied, SWcNotifyCommitCopiedReplaced, SWcNotifyUrlRedirect,
+    SWcNotifyPathNonexistent, SWcNotifyExclude, SWcNotifyFailedConflict, SWcNotifyFailedMissing, SWcNotifyFailedOutOfDate,
+    SWcNotifyFailedNoParent, SWcNotifyFailedLocked, SWcNotifyFailedForbiddenByServer, SWcNotifySkipConflicted,
+    SWcNotifyUpdateBrokenLock, SWcNotifyFailedObstruction, SWcNotifyConflictResolverStarting,
+    SWcNotifyConflictResolverDone, SWcNotifyLeftLocalModifications, SWcNotifyForeignCopyBegin, SWcNotifyMoveBroken);
 begin
   Result := NotifyActionStrings[Action];
 end;
@@ -1087,7 +1096,8 @@ const
     sWcNotifyStateObstructed,
     sWcNotifyStateChanged,
     sWcNotifyStateMerged,
-    sWcNotifyStateConflicted);
+    sWcNotifyStateConflicted,
+    sWcNotifyStateSourceMissing);
 begin
   Result := NotifyStateStrings[State];
 end;

@@ -143,7 +143,9 @@ type
     svnNodeNone,
     svnNodeFile,
     svnNodeDir,
-    svnNodeUnknown
+    svnNodeUnknown,
+    //Subversion 1.8 and higher
+    svnNodeSymlink
   );
   PSvnRevNum = ^TSvnRevNum;
   TSvnRevNum = Longint;
@@ -2769,10 +2771,12 @@ type
     svnWcNotifyCommitReplaced,
     svnWcNotifyCommitPostfixTxdelta,
     svnWcNotifyBlameRevision,
+    //Subversion 1.2 and higher
     svnWcNotifyLocked,
     svnWcNotifyUnlocked,
     svnWcNotifyFailedLock,
     svnWcNotifyFailedUnlock,
+    //Subversion 1.5 and higher
     svnWcNotifyExists,
     svnWcNotifyChangelistSet,
     svnWcNotifyChangelistClear,
@@ -2789,7 +2793,44 @@ type
     svnWcNotifyRevpropDeleted,
     svnWcNotifyMergeCompleted,
     svnWcNotifyTreeConflict,
-    svnWcNotifyFailedExternal
+    svnWcNotifyFailedExternal,
+    //Subversion 1.7 and higher
+    svnWcNotifyUpdateStarted,
+    svnWcNotifyUpdateSkipObstruction,
+    svnWcNotifyUpdateSkipWorkingOnly,
+    svnWcNotifyUpdateSkipAccessDenied,
+    svnWcNotifyUpdateExternalRemoved,
+    svnWcNotifyUpdateShadowedAdd,
+    svnWcNotifyUpdateShadowedUpdate,
+    svnWcNotifyUpdateShadowedDelete,
+    svnWcNotifyMergeRecordInfo,
+    svnWcNotifyUpgradedPath,
+    svnWcNotifyMergeRecordInfoBegin,
+    svnWcNotifyMergeElideInfo,
+    svnWcNotifyPatch,
+    svnWcNotifyPatchAppliedHunk,
+    svnWcNotifyPatchRejectedHunk,
+    svnWcNotifyPatchHunkAlreadyApplied,
+    svnWcNotifyCommitCopied,
+    svnWcNotifyCommitCopiedReplaced,
+    svnWcNotifyUrlRedirect,
+    svnWcNotifyPathNonexistent,
+    svnWcNotifyExclude,
+    svnWcNotifyFailedConflict,
+    svnWcNotifyFailedMissing,
+    svnWcNotifyFailedOutOfDate,
+    svnWcNotifyFailedNoParent,
+    svnWcNotifyFailedLocked,
+    svnWcNotifyFailedForbiddenByServer,
+    svnWcNotifySkipConflicted,
+    //Subversion 1.8 and higher
+    svnWcNotifyUpdateBrokenLock,
+    svnWcNotifyFailedObstruction,
+    svnWcNotifyConflictResolverStarting,
+    svnWcNotifyConflictResolverDone,
+    svnWcNotifyLeftLocalModifications,
+    svnWcNotifyForeignCopyBegin,
+    svnWcNotifyMoveBroken
   );
   PSvnWcNotifyState = ^TSvnWcNotifyState;
   TSvnWcNotifyState = (
@@ -2800,7 +2841,8 @@ type
     svnWcNotifyStateObstructed,
     svnWcNotifyStateChanged,
     svnWcNotifyStateMerged,
-    svnWcNotifyStateConflicted
+    svnWcNotifyStateConflicted,
+    svnWcNotifyStateSourceMissing
   );
   TSvnWcNotifyLockState = (
     svnWcNotifyLockStateInapplicable,
@@ -2998,18 +3040,29 @@ type
   TSvnWcConflictAction = (
     svnWcConflictActionEdit,
     svnWcConflictActionAdd,
-    svnWcConflictActionDelete
+    svnWcConflictActionDelete,
+    //Subversion 1.7 and higher
+    svnWcConflictActionReplace
   );
   TSvnWcConflictReason = (
     svnWcConflictReasonEdited,
     svnWcConflictReasonObstructed,
     svnWcConflictReasonDeleted,
     svnWcConflictReasonMissing,
-    svnWcConflictReasonUnversioned
+    svnWcConflictReasonUnversioned,
+    //Subversion 1.6 and higher
+    svnWcConflictReasonAdded,
+    //Subversion 1.7 and higher
+    svnWcConflictReasonReplaced,
+    //Subversion 1.8 and higher
+    svnWcConflictReasonMovedAway,
+    svnWcConflictReasonMovedHere
   );
   TSvnWcConflictKind = (
     svnWcConflictKindText,
-    svnWcConflictKindProperty
+    svnWcConflictKindProperty,
+    //Subversion 1.6 and higher
+    svnWcConflictKindTree
   );
   PSvnWcConflictDescription = ^TSvnWcConflictDescription;
   TSvnWcConflictDescription = record
@@ -3034,7 +3087,9 @@ type
     SvnWcConflictChooseMineFull,
     SvnWcConflictChooseTheirsConflict,
     SvnWcConflictChooseMineConflict,
-    SvnWcConflictChooseMerged
+    svnWcConflictChooseMerged,
+    //Subversion 1.8 and higher
+    svnWcConflictChooseUnspecified
   );
   PSvnWcConflictResult = ^TSvnWcConflictResult;
   TSvnWcConflictResult = record

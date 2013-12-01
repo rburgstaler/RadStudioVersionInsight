@@ -44,6 +44,7 @@ resourcestring
   SNodeKindFile = 'File';
   SNodeKindDir = 'Directory';
   SNodeKindUnknown = 'Unknown';
+  SNodeKindSymlink = 'Symlink';
   SAuthor = 'Author: ';
   STime = 'Time: ';
   SComment = 'Comment: ';
@@ -104,6 +105,42 @@ resourcestring
   SWcNotifyMergeCompleted = 'Merge Completed';
   SWcNotifyTreeConflict = 'Tree Conflict';
   SWcNotifyFailedExternal = 'Failed External';
+  SWcNotifyUpdateStarted = 'Update Started';
+  SWcNotifyUpdateSkipObstruction = 'Update Skip Obstruction';
+  SWcNotifyUpdateSkipWorkingOnly = 'Update Skip Working Only';
+  SWcNotifyUpdateSkipAccessDenied = 'Update Skip Access Denied';
+  SWcNotifyUpdateExternalRemoved = 'Update External Removed';
+  SWcNotifyUpdateShadowedAdd = 'Update Shadowed Add';
+  SWcNotifyUpdateShadowedUpdate = 'Update Shadowed Update';
+  SWcNotifyUpdateShadowedDelete = 'Update Shadowed Delete';
+  SWcNotifyMergeRecordInfo = 'Merge Record Info';
+  SWcNotifyUpgradedPath = 'Upgraded Path';
+  SWcNotifyMergeRecordInfoBegin = 'Merge Record Info Begin';
+  SWcNotifyMergeElideInfo = 'Merge Elide Info';
+  SWcNotifyPatch = 'Patch';
+  SWcNotifyPatchAppliedHunk = 'Patch Applied Hunk';
+  SWcNotifyPatchRejectedHunk = 'Patch Rejected Hunk';
+  SWcNotifyPatchHunkAlreadyApplied = 'Patch Hunk Already Applied';
+  SWcNotifyCommitCopied = 'Commit Copied';
+  SWcNotifyCommitCopiedReplaced = 'Commit Copied Replaced';
+  SWcNotifyUrlRedirect = 'Url Redirect';
+  SWcNotifyPathNonexistent = 'Path Nonexistent';
+  SWcNotifyExclude = 'Exclude';
+  SWcNotifyFailedConflict = 'Failed Conflict';
+  SWcNotifyFailedMissing = 'Failed Missing';
+  SWcNotifyFailedOutOfDate = 'Failed Out Of Date';
+  SWcNotifyFailedNoParent = 'Failed No Parent';
+  SWcNotifyFailedLocked = 'Failed Locked';
+  SWcNotifyFailedForbiddenByServer = 'Failed Forbidden By Server';
+  SWcNotifySkipConflicted = 'Skip Conflicted';
+  SWcNotifyUpdateBrokenLock = 'Update Broken Lock';
+  SWcNotifyFailedObstruction = 'Failed Obstruction';
+  SWcNotifyConflictResolverStarting = 'Conflict Resolver Starting';
+  SWcNotifyConflictResolverDone = 'Conflict Resolver Done';
+  SWcNotifyLeftLocalModifications = 'Left Local Modifications';
+  SWcNotifyForeignCopyBegin = 'Foreign Copy Begin';
+  SWcNotifyMoveBroken = 'Move Broken';
+
   sWcNotifyStateInapplicable = 'Inapplicable';
   sWcNotifyStateUnknown = 'Unknown';
   sWcNotifyStateUnchanged = 'Unchanged';
@@ -112,6 +149,7 @@ resourcestring
   sWcNotifyStateChanged = 'Changed';
   sWcNotifyStateMerged = 'Merged';
   sWcNotifyStateConflicted = 'Conflicted';
+  sWcNotifyStateSourceMissing = 'Source Missing';
 
 
   sCancelledByUser = 'Cancelled by user';
