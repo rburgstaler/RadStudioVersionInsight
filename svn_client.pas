@@ -272,6 +272,7 @@ const
   SVN_KEYWORD_URL_LONG = 'HeadURL';
   SVN_KEYWORD_URL_SHORT = 'URL';
   SVN_KEYWORD_ID = 'Id';
+  SVN_KEYWORD_HEADER = 'Header';
 
   SVN_STREAM_CHUNK_SIZE = 102400;
   SVN__STREAM_CHUNK_SIZE = 16384;
@@ -335,15 +336,15 @@ type
 
 const
   SVN_VER_MAJOR = 1;
-  SVN_VER_MINOR = 5;
+  SVN_VER_MINOR = 8;
   SVN_VER_PATCH = 0;
-  SVN_VER_TAG = ' (r31699)';
+  SVN_VER_TAG = ' (r1490375)';
   SVN_VER_NUMTAG = '';
-  SVN_VER_REVISION = 31699;
+  SVN_VER_REVISION = 1490375;
 
-  SVN_VER_NUM = '1.5.0';
+  SVN_VER_NUM = '1.8.0';
   SVN_VER_NUMBER = SVN_VER_NUM + SVN_VER_NUMTAG;
-  SVN_VERSION = SVN_VER_NUM + SVN_VER_TAG;
+  SVN_VERSION = SVN_VER_NUMBER + SVN_VER_TAG;
 
 var
   svn_ver_compatible: function(my_version, lib_version: PSvnVersion): TSvnBoolean; cdecl;
