@@ -94,6 +94,7 @@ var
 
 const
   SVN_SVNDIFF_MIME_TYPE = 'application/vnd.svn-svndiff';
+  SVN_SKEL_MIME_TYPE = 'application/vnd.svn-skel';
   SVN_DAV_DELTA_BASE_HEADER = 'X-SVN-VR-Base';
   SVN_DAV_OPTIONS_HEADER = 'X-SVN-Options';
   SVN_DAV_OPTION_NO_MERGE_RESPONSE = 'no-merge-response';
@@ -104,6 +105,21 @@ const
   SVN_DAV_VERSION_NAME_HEADER = 'X-SVN-Version-Name';
   SVN_DAV_CREATIONDATE_HEADER = 'X-SVN-Creation-Date';
   SVN_DAV_LOCK_OWNER_HEADER = 'X-SVN-Lock-Owner';
+  SVN_DAV_YOUNGEST_REV_HEADER = 'SVN-Youngest-Rev';
+  SVN_DAV_REPOS_UUID_HEADER = 'SVN-Repository-UUID';
+  SVN_DAV_ME_RESOURCE_HEADER = 'SVN-Me-Resource';
+  SVN_DAV_ROOT_URI_HEADER = 'SVN-Repository-Root';
+  SVN_DAV_REV_STUB_HEADER = 'SVN-Rev-Stub';
+  SVN_DAV_REV_ROOT_STUB_HEADER = 'SVN-Rev-Root-Stub';
+  SVN_DAV_TXN_STUB_HEADER = 'SVN-Txn-Stub';
+  SVN_DAV_VTXN_STUB_HEADER = 'SVN-VTxn-Stub';
+  SVN_DAV_TXN_ROOT_STUB_HEADER = 'SVN-Txn-Root-Stub';
+  SVN_DAV_VTXN_ROOT_STUB_HEADER = 'SVN-VTxn-Root-Stub';
+  SVN_DAV_TXN_NAME_HEADER = 'SVN-Txn-Name';
+  SVN_DAV_VTXN_NAME_HEADER = 'SVN-VTxn-Name';
+  SVN_DAV_SUPPORTED_POSTS_HEADER = 'SVN-Supported-Posts';
+  SVN_DAV_ALLOW_BULK_UPDATES = 'SVN-Allow-Bulk-Updates';
+  SVN_DAV_REPOSITORY_MERGEINFO = 'SVN-Repository-MergeInfo';
   SVN_DAV_BASE_FULLTEXT_MD5_HEADER = 'X-SVN-Base-Fulltext-MD5';
   SVN_DAV_RESULT_FULLTEXT_MD5_HEADER = 'X-SVN-Result-Fulltext-MD5';
   SVN_DAV_ERROR_NAMESPACE = 'svn:';
@@ -115,6 +131,12 @@ const
   SVN_DAV_NS_DAV_SVN_MERGEINFO = SVN_DAV_PROP_NS_DAV + 'svn/mergeinfo';
   SVN_DAV_NS_DAV_SVN_LOG_REVPROPS = SVN_DAV_PROP_NS_DAV + 'svn/log-revprops';
   SVN_DAV_NS_DAV_SVN_PARTIAL_REPLAY = SVN_DAV_PROP_NS_DAV + 'svn/partial-replay';
+  SVN_DAV_NS_DAV_SVN_ATOMIC_REVPROPS = SVN_DAV_PROP_NS_DAV + 'svn/atomic-revprops';
+  SVN_DAV_NS_DAV_SVN_INHERITED_PROPS = SVN_DAV_PROP_NS_DAV + 'svn/inherited-props';
+  SVN_DAV_NS_DAV_SVN_EPHEMERAL_TXNPROPS = SVN_DAV_PROP_NS_DAV + 'svn/ephemeral-txnprops';
+  SVN_DAV_NS_DAV_SVN_INLINE_PROPS = SVN_DAV_PROP_NS_DAV + 'svn/inline-props';
+  SVN_DAV_NS_DAV_SVN_REPLAY_REV_RESOURCE = SVN_DAV_PROP_NS_DAV + 'svn/replay-rev-resource';
+  SVN_DAV_NS_DAV_SVN_REVERSE_FILE_REVS = SVN_DAV_PROP_NS_DAV + 'svn/reverse-file-revs';
 
 //----- svn_dav.h ------------------------------------------------------------------------------------------------------
 
