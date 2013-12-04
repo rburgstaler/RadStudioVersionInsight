@@ -1843,11 +1843,17 @@ var
 const
   SVN_FS_CONFIG_BDB_TXN_NOSYNC = 'bdb-txn-nosync';
   SVN_FS_CONFIG_BDB_LOG_AUTOREMOVE = 'bdb-log-autoremove';
+  SVN_FS_CONFIG_FSFS_CACHE_DELTAS = 'fsfs-cache-deltas';
+  SVN_FS_CONFIG_FSFS_CACHE_FULLTEXTS = 'fsfs-cache-fulltexts';
+  SVN_FS_CONFIG_FSFS_CACHE_REVPROPS = 'fsfs-cache-revprops';
+  SVN_FS_CONFIG_FSFS_CACHE_NS = 'fsfs-cache-namespace';
   SVN_FS_CONFIG_FS_TYPE = 'fs-type';
   SVN_FS_TYPE_BDB = 'bdb';
   SVN_FS_TYPE_FSFS = 'fsfs';
   SVN_FS_CONFIG_PRE_1_4_COMPATIBLE = 'pre-1.4-compatible';
   SVN_FS_CONFIG_PRE_1_5_COMPATIBLE = 'pre-1.5-compatible';
+  SVN_FS_CONFIG_PRE_1_6_COMPATIBLE = 'pre-1.6-compatible';
+  SVN_FS_CONFIG_PRE_1_8_COMPATIBLE = 'pre-1.8-compatible';
   SVN_FS_TXN_CHECK_OOD = $00001;
   SVN_FS_TXN_CHECK_LOCKS = $00002;
 
@@ -2026,6 +2032,7 @@ var
 const
   SVN_REPOS_DUMPFILE_MAGIC_HEADER = 'SVN-fs-dump-format-version';
   SVN_REPOS_DUMPFILE_FORMAT_VERSION = 3;
+  SVN_REPOS_DUMPFILE_FORMAT_VERSION_DELTAS = 3;
   SVN_REPOS_DUMPFILE_UUID = 'UUID';
   SVN_REPOS_DUMPFILE_CONTENT_LENGTH = 'Content-length';
   SVN_REPOS_DUMPFILE_REVISION_NUMBER = 'Revision-number';
@@ -2034,13 +2041,19 @@ const
   SVN_REPOS_DUMPFILE_NODE_ACTION = 'Node-action';
   SVN_REPOS_DUMPFILE_NODE_COPYFROM_PATH = 'Node-copyfrom-path';
   SVN_REPOS_DUMPFILE_NODE_COPYFROM_REV = 'Node-copyfrom-rev';
-  SVN_REPOS_DUMPFILE_TEXT_COPY_SOURCE_CHECKSUM = 'Text-copy-source-md5';
-  SVN_REPOS_DUMPFILE_TEXT_CONTENT_CHECKSUM = 'Text-content-md5';
+  SVN_REPOS_DUMPFILE_TEXT_COPY_SOURCE_MD5 = 'Text-copy-source-md5';
+  SVN_REPOS_DUMPFILE_TEXT_COPY_SOURCE_SHA1 = 'Text-copy-source-sha1';
+  SVN_REPOS_DUMPFILE_TEXT_COPY_SOURCE_CHECKSUM = SVN_REPOS_DUMPFILE_TEXT_COPY_SOURCE_MD5;
+  SVN_REPOS_DUMPFILE_TEXT_CONTENT_MD5 = 'Text-content-md5';
+  SVN_REPOS_DUMPFILE_TEXT_CONTENT_SHA1 = 'Text-content-sha1';
+  SVN_REPOS_DUMPFILE_TEXT_CONTENT_CHECKSUM = SVN_REPOS_DUMPFILE_TEXT_CONTENT_MD5;
   SVN_REPOS_DUMPFILE_PROP_CONTENT_LENGTH = 'Prop-content-length';
   SVN_REPOS_DUMPFILE_TEXT_CONTENT_LENGTH = 'Text-content-length';
   SVN_REPOS_DUMPFILE_PROP_DELTA = 'Prop-delta';
   SVN_REPOS_DUMPFILE_TEXT_DELTA = 'Text-delta';
-  SVN_REPOS_DUMPFILE_TEXT_DELTA_BASE_CHECKSUM = 'Text-delta-base-md5';
+  SVN_REPOS_DUMPFILE_TEXT_DELTA_BASE_MD5 = 'Text-delta-base-md5';
+  SVN_REPOS_DUMPFILE_TEXT_DELTA_BASE_SHA1 = 'Text-delta-base-sha1';
+  SVN_REPOS_DUMPFILE_TEXT_DELTA_BASE_CHECKSUM = SVN_REPOS_DUMPFILE_TEXT_DELTA_BASE_MD5;
 
   SVN_REPOS_CAPABILITY_MERGEINFO = 'mergeinfo';
 
@@ -2450,18 +2463,23 @@ const
   SVN_AUTH_SSL_OTHER       = $40000000;
 
   SVN_AUTH_PARAM_PREFIX = 'svn:auth:';
-  SVN_AUTH_PARAM_DEFAULT_USERNAME                 = SVN_AUTH_PARAM_PREFIX + 'username';
-  SVN_AUTH_PARAM_DEFAULT_PASSWORD                 = SVN_AUTH_PARAM_PREFIX + 'password';
-  SVN_AUTH_PARAM_NON_INTERACTIVE                  = SVN_AUTH_PARAM_PREFIX + 'non-interactive';
-  SVN_AUTH_PARAM_DONT_STORE_PASSWORDS             = SVN_AUTH_PARAM_PREFIX + 'dont-store-passwords';
-  SVN_AUTH_PARAM_NO_AUTH_CACHE                    = SVN_AUTH_PARAM_PREFIX + 'no-auth-cache';
-  SVN_AUTH_PARAM_SSL_SERVER_FAILURES              = SVN_AUTH_PARAM_PREFIX + 'ssl:failures';
-  SVN_AUTH_PARAM_SSL_SERVER_CERT_INFO             = SVN_AUTH_PARAM_PREFIX + 'ssl:cert-info';
-  SVN_AUTH_PARAM_CONFIG                           = SVN_AUTH_PARAM_PREFIX + 'config';
-  SVN_AUTH_PARAM_SERVER_GROUP                     = SVN_AUTH_PARAM_PREFIX + 'server-group';
-  SVN_AUTH_PARAM_CONFIG_DIR                       = SVN_AUTH_PARAM_PREFIX + 'config-dir';
-
-  SVN_RA_ABI_VERSION = 2;
+  SVN_AUTH_PARAM_DEFAULT_USERNAME                   = SVN_AUTH_PARAM_PREFIX + 'username';
+  SVN_AUTH_PARAM_DEFAULT_PASSWORD                   = SVN_AUTH_PARAM_PREFIX + 'password';
+  SVN_AUTH_PARAM_NON_INTERACTIVE                    = SVN_AUTH_PARAM_PREFIX + 'non-interactive';
+  SVN_AUTH_PARAM_DONT_STORE_PASSWORDS               = SVN_AUTH_PARAM_PREFIX + 'dont-store-passwords';
+  SVN_AUTH_PARAM_STORE_PLAINTEXT_PASSWORDS          = SVN_AUTH_PARAM_PREFIX + 'store-plaintext-passwords';
+  SVN_AUTH_PARAM_DONT_STORE_SSL_CLIENT_CERT_PP      = SVN_AUTH_PARAM_PREFIX + 'dont-store-ssl-client-cert-pp';
+  SVN_AUTH_PARAM_STORE_SSL_CLIENT_CERT_PP_PLAINTEXT = SVN_AUTH_PARAM_PREFIX + 'store-ssl-client-cert-pp-plaintext';
+  SVN_AUTH_PARAM_NO_AUTH_CACHE                      = SVN_AUTH_PARAM_PREFIX + 'no-auth-cache';
+  SVN_AUTH_PARAM_SSL_SERVER_FAILURES                = SVN_AUTH_PARAM_PREFIX + 'ssl:failures';
+  SVN_AUTH_PARAM_SSL_SERVER_CERT_INFO               = SVN_AUTH_PARAM_PREFIX + 'ssl:cert-info';
+  SVN_AUTH_PARAM_CONFIG_CATEGORY_CONFIG             = SVN_AUTH_PARAM_PREFIX + 'config-category-config';
+  SVN_AUTH_PARAM_CONFIG_CATEGORY_SERVERS            = SVN_AUTH_PARAM_PREFIX + 'config-category-servers';
+  SVN_AUTH_PARAM_CONFIG                             = SVN_AUTH_PARAM_CONFIG_CATEGORY_SERVERS;
+  SVN_AUTH_PARAM_SERVER_GROUP                       = SVN_AUTH_PARAM_PREFIX + 'server-group';
+  SVN_AUTH_PARAM_CONFIG_DIR                         = SVN_AUTH_PARAM_PREFIX + 'config-dir';
+  SVN_AUTH_PARAM_GNOME_KEYRING_UNLOCK_PROMPT_FUNC   = 'gnome-keyring-unlock-prompt-func';
+  SVN_AUTH_PARAM_GNOME_KEYRING_UNLOCK_PROMPT_BATON  = 'gnome-keyring-unlock-prompt-baton';
 
 type
   PSvnAuthBaton = ^TSvnAuthBaton;
@@ -2624,6 +2642,12 @@ const
   SVN_RA_CAPABILITY_LOG_REVPROPS = 'log-revprops';
   SVN_RA_CAPABILITY_PARTIAL_REPLAY = 'partial-replay';
   SVN_RA_CAPABILITY_COMMIT_REVPROPS = 'commit-revprops';
+  SVN_RA_CAPABILITY_ATOMIC_REVPROPS = 'atomic-revprops';
+  SVN_RA_CAPABILITY_INHERITED_PROPS = 'inherited-props';
+  SVN_RA_CAPABILITY_EPHEMERAL_TXNPROPS = 'ephemeral-txnprops';
+  SVN_RA_CAPABILITY_GET_FILE_REVS_REVERSE = 'get-file-revs-reversed';
+
+  SVN_RA_ABI_VERSION = 2;
 
 type
   TSvnRaGetWCPropFunc = function(baton: Pointer; relpath, name: PAnsiChar; value: PPSvnString; pool: PAprPool): PSvnError;
