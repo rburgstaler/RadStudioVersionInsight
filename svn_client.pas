@@ -4477,7 +4477,10 @@ end;
 
 function SvnIsLockError(err: TSvnError): Boolean;
 begin
-  Result := (err.apr_err = SVN_ERR_FS_PATH_ALREADY_LOCKED) or (err.apr_err = SVN_ERR_FS_OUT_OF_DATE);
+  Result := (err.apr_err = SVN_ERR_FS_PATH_ALREADY_LOCKED) or
+    (err.apr_err = SVN_ERR_FS_NOT_FOUND) or
+    (err.apr_err = SVN_ERR_FS_OUT_OF_DATE) or
+    (err.apr_err = SVN_ERR_FS_BAD_LOCK_TOKEN);
 end;
 
 function SvnIsUnlockError(err: TSvnError): Boolean;
