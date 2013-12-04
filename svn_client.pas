@@ -2912,6 +2912,10 @@ const
   SVN_RA_SVN_CAP_DEPTH = 'depth';
   SVN_RA_SVN_CAP_LOG_REVPROPS = 'log-revprops';
   SVN_RA_SVN_CAP_PARTIAL_REPLAY = 'partial-replay';
+  SVN_RA_SVN_CAP_ATOMIC_REVPROPS = 'atomic-revprops';
+  SVN_RA_SVN_CAP_INHERITED_PROPS = 'inherited-props';
+  SVN_RA_SVN_CAP_EPHEMERAL_TXNPROPS = 'ephemeral-txnprops';
+  SVN_RA_SVN_CAP_GET_FILE_REVS_REVERSE = 'file-revs-reverse';
 
   SVN_RA_SVN_DIRENT_KIND = 'kind';
   SVN_RA_SVN_DIRENT_SIZE = 'size';
@@ -3631,6 +3635,7 @@ const
   SVN_CLIENT_COMMIT_ITEM_PROP_MODS   = $08;
   SVN_CLIENT_COMMIT_ITEM_IS_COPY     = $10;
   SVN_CLIENT_COMMIT_ITEM_LOCK_TOKEN  = $20;
+  SVN_CLIENT_COMMIT_ITEM_MOVED_HERE  = $40;
 
   SVN_CLIENT_AUTH_USERNAME = 'username';
   SVN_CLIENT_AUTH_PASSWORD = 'password';
