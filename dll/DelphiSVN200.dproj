@@ -1,0 +1,360 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{17908DC8-1EB0-4224-A774-41C3680C3FE5}</ProjectGuid>
+        <MainSource>DelphiSVN200.dpr</MainSource>
+        <Base>True</Base>
+        <Config Condition="'$(Config)'==''">Debug</Config>
+        <TargetedPlatforms>1</TargetedPlatforms>
+        <AppType>Library</AppType>
+        <FrameworkType>None</FrameworkType>
+        <ProjectVersion>15.4</ProjectVersion>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+        <Base_Win32>true</Base_Win32>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
+        <Cfg_1>true</Cfg_1>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
+        <Cfg_2>true</Cfg_2>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
+        <Cfg_2_Win32>true</Cfg_2_Win32>
+        <CfgParent>Cfg_2</CfgParent>
+        <Cfg_2>true</Cfg_2>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <UsePackages>true</UsePackages>
+        <DCC_UsePackage>designide;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_S>false</DCC_S>
+        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=;CFBundleName=</VerInfo_Keys>
+        <DCC_F>false</DCC_F>
+        <DCC_E>false</DCC_E>
+        <DCC_N>false</DCC_N>
+        <SanitizedProjectName>DelphiSVN200</SanitizedProjectName>
+        <DCC_ImageBase>00400000</DCC_ImageBase>
+        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;System.Win;Winapi;Vcl;Vcl.Imaging;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_K>false</DCC_K>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <GenDll>true</GenDll>
+        <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win32)'!=''">
+        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_1)'!=''">
+        <DCC_DebugInformation>0</DCC_DebugInformation>
+        <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+        <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+        <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2)'!=''">
+        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_Optimize>false</DCC_Optimize>
+        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+    </PropertyGroup>
+    <ItemGroup>
+        <DelphiCompile Include="$(MainSource)">
+            <MainSource>MainSource</MainSource>
+        </DelphiCompile>
+        <RcCompile Include="..\resources\tsvn.rc">
+            <Form>tsvn.res</Form>
+        </RcCompile>
+        <DCCReference Include="..\svn\apr.pas"/>
+        <DCCReference Include="..\svn\svn_client.pas"/>
+        <DCCReference Include="..\svn\SvnClient.pas"/>
+        <DCCReference Include="..\svn\svnconst.pas"/>
+        <DCCReference Include="..\svn\SvnTree.pas"/>
+        <DCCReference Include="..\svnui\SvnClientLoginPrompt.pas">
+            <Form>FormSvnClientLoginPrompt</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientSSLClientCertPrompt.pas">
+            <Form>FormSvnClientSSLClientCertPrompt</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientSSLServerTrustPrompt.pas">
+            <Form>FormSvnClientSSLServerTrustPrompt</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnImages.pas">
+            <Form>SvnImageModule</Form>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnUIConst.pas"/>
+        <DCCReference Include="..\svnui\SvnClientCommitFrame.pas">
+            <Form>SvnCommitFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientLog.pas">
+            <Form>SvnLogFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientImportFrame.pas">
+            <Form>SvnImportFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientRecentComments.pas">
+            <Form>Form1</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientCheckout.pas">
+            <Form>CheckoutDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientProjectSelect.pas">
+            <Form>SvnProjectSelectDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientConflict.pas">
+            <Form>SvnConflictDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientUpdate.pas">
+            <Form>UpdateDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientRepoBrowserFrame.pas">
+            <Form>FrmRepoBrowser</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientRepoBrowserDialog.pas">
+            <Form>dlgRepoBrowser</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnUITypes.pas"/>
+        <DCCReference Include="..\svnui\SvnUIUtils.pas"/>
+        <DCCReference Include="..\svnui\SvnClientOptionsFrame.pas">
+            <Form>SvnOptionsFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientProgress.pas">
+            <Form>SvnProgressDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientRangeSelect.pas">
+            <Form>SvnRangeSelectDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientEditComment.pas">
+            <Form>EditCommentDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientLogDialog.pas">
+            <Form>SvnLogDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientMerge.pas">
+            <Form>SvnMergeDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnui\SvnClientSwitch.pas">
+            <Form>SvnSwitchDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\svnide\SvnIDEClient.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEHistory.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEConst.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEMenus.pas"/>
+        <DCCReference Include="..\svnide\SvnIDENotifier.pas"/>
+        <DCCReference Include="..\svnide\SvnIDECommit.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEUpdate.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEClean.pas"/>
+        <DCCReference Include="..\svnide\SvnIDELog.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEImport.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEMessageView.pas"/>
+        <DCCReference Include="..\svnide\SvnIDECheckout.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEUtils.pas"/>
+        <DCCReference Include="..\svnide\SvnIDERepoBrowser.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEAddInOptions.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEColors.pas"/>
+        <DCCReference Include="..\svnide\SvnIDETypes.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEIcons.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEFileStates.pas"/>
+        <DCCReference Include="..\svnide\SvnIDEMerge.pas"/>
+        <DCCReference Include="..\svnide\SvnIDERevert.pas"/>
+        <DCCReference Include="..\svnide\SvnIDESwitch.pas"/>
+        <DCCReference Include="..\hgide\HgClient.pas"/>
+        <DCCReference Include="..\hgide\HgIDEClient.pas"/>
+        <DCCReference Include="..\hgide\HgIDEHistory.pas"/>
+        <DCCReference Include="..\hgide\HgAddInOptionsFrame.pas">
+            <Form>frmHgTestsOptions</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgIDEAddInOptions.pas"/>
+        <DCCReference Include="..\hgide\HgIDEConst.pas"/>
+        <DCCReference Include="..\hgide\HgIDEMenus.pas"/>
+        <DCCReference Include="..\hgide\HgIDETypes.pas"/>
+        <DCCReference Include="..\hgide\HgIDEUtils.pas"/>
+        <DCCReference Include="..\hgide\HgUIConst.pas"/>
+        <DCCReference Include="..\hgide\HgUITypes.pas"/>
+        <DCCReference Include="..\hgide\HgUIUtils.pas"/>
+        <DCCReference Include="..\hgide\HgClientProgress.pas">
+            <Form>HgProgressDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgIDELog.pas"/>
+        <DCCReference Include="..\hgide\HgClientLog.pas">
+            <Form>HgLogFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgClientRecentComments.pas">
+            <Form>HgRecentCommentsDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgImages.pas">
+            <Form>HgImageModule</Form>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgTree.pas"/>
+        <DCCReference Include="..\hgide\HgClientCommitFrame.pas">
+            <Form>HgCommitFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgIDECommit.pas"/>
+        <DCCReference Include="..\hgide\HgIDEMessageView.pas"/>
+        <DCCReference Include="..\hgide\HgIDECheckout.pas"/>
+        <DCCReference Include="..\hgide\HgClientCheckout.pas">
+            <Form>HgCheckoutDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgClientProjectSelect.pas">
+            <Form>HgProjectSelectDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\hgide\HgClientUpdate.pas">
+            <Form>HgUpdateDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\verinsmisc\VerInsResources.pas"/>
+        <DCCReference Include="..\hgide\HgIDEIcons.pas"/>
+        <DCCReference Include="..\hgide\HgIDEFileStates.pas"/>
+        <DCCReference Include="..\hgide\HgIDEColors.pas"/>
+        <DCCReference Include="..\hgide\HgIDERevert.pas"/>
+        <DCCReference Include="..\gitide\GitIDEHistory.pas"/>
+        <DCCReference Include="..\gitide\GitIDEClient.pas"/>
+        <DCCReference Include="..\gitide\GitClient.pas"/>
+        <DCCReference Include="..\gitide\GitIDEAddInOptions.pas"/>
+        <DCCReference Include="..\gitide\GitAddInOptionsFrame.pas">
+            <Form>frmGitTestsOptions</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitIDEConst.pas"/>
+        <DCCReference Include="..\gitide\GitIDEMenus.pas"/>
+        <DCCReference Include="..\gitide\GitIDEIcons.pas"/>
+        <DCCReference Include="..\gitide\GitIDEFileStates.pas"/>
+        <DCCReference Include="..\gitide\GitUIConst.pas"/>
+        <DCCReference Include="..\gitide\GitIDECheckout.pas"/>
+        <DCCReference Include="..\gitide\GitClientCheckout.pas">
+            <Form>GitCheckoutDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitClientProjectSelect.pas">
+            <Form>GitProjectSelectDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitImages.pas">
+            <Form>GitImageModule</Form>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitClientUpdate.pas">
+            <Form>GitUpdateDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitClientCommitFrame.pas">
+            <Form>GitCommitFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitClientRecentComments.pas">
+            <Form>GitRecentCommentsDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitIDECommit.pas"/>
+        <DCCReference Include="..\gitide\GitIDEMessageView.pas"/>
+        <DCCReference Include="..\gitide\GitIDEUtils.pas"/>
+        <DCCReference Include="..\gitide\GitTree.pas"/>
+        <DCCReference Include="..\gitide\GitUITypes.pas"/>
+        <DCCReference Include="..\gitide\GitUIUtils.pas"/>
+        <DCCReference Include="..\gitide\GitIDELog.pas"/>
+        <DCCReference Include="..\gitide\GitClientLog.pas">
+            <Form>GitLogFrame</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitIDETypes.pas"/>
+        <DCCReference Include="..\gitide\GitClientProgress.pas">
+            <Form>GitProgressDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\gitide\GitIDEColors.pas"/>
+        <DCCReference Include="..\gitide\GitIDERevert.pas"/>
+        <DCCReference Include="..\verinsmisc\VerInsAddInOptionsFrame.pas">
+            <Form>frmVerInsOptions</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\verinsmisc\VerInsIDEAddInOptions.pas"/>
+        <DCCReference Include="..\liveblame\textdiff\DiffUnit.pas"/>
+        <DCCReference Include="..\liveblame\textdiff\HashUnit.pas"/>
+        <DCCReference Include="..\liveblame\VerInsClientProgress.pas">
+            <Form>VerInsProgressDialog</Form>
+        </DCCReference>
+        <DCCReference Include="..\liveblame\VerInsIDETypes.pas"/>
+        <DCCReference Include="..\liveblame\VerInsLiveBlame.pas"/>
+        <DCCReference Include="..\liveblame\VerInsIDEBlameAddInOptions.pas"/>
+        <DCCReference Include="..\liveblame\VerInsBlameOptionsFrame.pas">
+            <Form>frmVerInsBlameOptions</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\liveblame\VerInsBlameSettings.pas"/>
+        <DCCReference Include="..\verinsmisc\VerInsIDEUtils.pas"/>
+        <DCCReference Include="..\verinsmisc\VerInsIDEMacros.pas"/>
+        <DCCReference Include="..\liveblame\VerInsLiveBlameTypes.pas"/>
+        <DCCReference Include="..\liveblame\VerInsIDEDockInfo.pas">
+            <Form>fmLiveBlameInfo</Form>
+        </DCCReference>
+        <BuildConfiguration Include="Debug">
+            <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Release">
+            <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Delphi.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Delphi.Personality>
+                <Source>
+                    <Source Name="MainSource">DelphiSVN200.dpr</Source>
+                </Source>
+                <Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k200.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp200.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dclodac200.bpl">Devart Oracle Data Access Components</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclBaseExpert200.bpl">JCL Package containing common units for JCL Experts</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclDebugExpert200.bpl">JCL Debug IDE extension</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclFavoriteFoldersExpert200.bpl">JCL Open and Save IDE dialogs with favorite folders</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclProjectAnalysisExpert200.bpl">JCL Project Analyzer</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclRepositoryExpert200.bpl">JCL Package containing repository wizards</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclSIMDViewExpert200.bpl">JCL Debug Window of XMM registers</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclStackTraceViewerExpert200.bpl">JCL Stack Trace Viewer</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclVersionControlExpert200.bpl">JCL Integration of version control systems in the IDE</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madBasic_.bpl">madBasic 1.2.4  -  www.madshi.net</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madDisAsm_.bpl">madDisAsm 2.2.4  -  www.madshi.net</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExcept_.bpl">madExcept 4.0.10  -  www.madshi.net</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExceptVcl_.bpl">madExceptVcl 2.1.0  -  www.madshi.net</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExceptIde_.bpl">madExceptIde 1.1.0  -  www.madshi.net</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExceptWizard_.bpl">madExceptWizard 3.1.5  -  www.madshi.net</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dcldxSkinsDesignHelperRS19.bpl">ExpressSkins Library Uses Clause Auto Fill Helper by Developer Express Inc.</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dcldxSkinscxEditorsHelperRS19.bpl">ExpressSkins Library Uses Clause Auto Fill Helper for ExpressEditors by Developer Express Inc.</Excluded_Packages>
+                    <Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dcldxSkinscxPCPainterRS19.bpl">ExpressSkins Library Uses Clause Auto Fill Helper for PageControl Painter by Developer Express Inc.</Excluded_Packages>
+                </Excluded_Packages>
+            </Delphi.Personality>
+            <Platforms>
+                <Platform value="OSX32">False</Platform>
+                <Platform value="Win32">True</Platform>
+                <Platform value="Win64">False</Platform>
+            </Platforms>
+        </BorlandProject>
+        <ProjectFileVersion>12</ProjectFileVersion>
+    </ProjectExtensions>
+    <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+    <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
+</Project>
