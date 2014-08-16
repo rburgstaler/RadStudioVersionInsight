@@ -1,5 +1,7 @@
 library DelphiSVN200;
 
+{$R 'tsvn.res' '..\resources\tsvn.rc'}
+
 uses
   Classes,
   ToolsAPI,
