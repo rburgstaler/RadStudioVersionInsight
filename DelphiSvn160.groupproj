@@ -1,0 +1,96 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{1F2132FC-0C52-4406-9415-6AF6BED0B3DF}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="svn\svn160.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="svnui\svnui160.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="svnide\svnide160.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="gitide\GitIDE160.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="hgide\HgIDE160.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="liveblame\VerInsLiveBlameIDE160.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="svn160">
+			<MSBuild Projects="svn\svn160.dproj"/>
+		</Target>
+		<Target Name="svn160:Clean">
+			<MSBuild Targets="Clean" Projects="svn\svn160.dproj"/>
+		</Target>
+		<Target Name="svn160:Make">
+			<MSBuild Targets="Make" Projects="svn\svn160.dproj"/>
+		</Target>
+		<Target Name="svnui160">
+			<MSBuild Projects="svnui\svnui160.dproj"/>
+		</Target>
+		<Target Name="svnui160:Clean">
+			<MSBuild Targets="Clean" Projects="svnui\svnui160.dproj"/>
+		</Target>
+		<Target Name="svnui160:Make">
+			<MSBuild Targets="Make" Projects="svnui\svnui160.dproj"/>
+		</Target>
+		<Target Name="svnide160">
+			<MSBuild Projects="svnide\svnide160.dproj"/>
+		</Target>
+		<Target Name="svnide160:Clean">
+			<MSBuild Targets="Clean" Projects="svnide\svnide160.dproj"/>
+		</Target>
+		<Target Name="svnide160:Make">
+			<MSBuild Targets="Make" Projects="svnide\svnide160.dproj"/>
+		</Target>
+		<Target Name="GitIDE160">
+			<MSBuild Projects="gitide\GitIDE160.dproj"/>
+		</Target>
+		<Target Name="GitIDE160:Clean">
+			<MSBuild Targets="Clean" Projects="gitide\GitIDE160.dproj"/>
+		</Target>
+		<Target Name="GitIDE160:Make">
+			<MSBuild Targets="Make" Projects="gitide\GitIDE160.dproj"/>
+		</Target>
+		<Target Name="HgIDE160">
+			<MSBuild Projects="hgide\HgIDE160.dproj"/>
+		</Target>
+		<Target Name="HgIDE160:Clean">
+			<MSBuild Targets="Clean" Projects="hgide\HgIDE160.dproj"/>
+		</Target>
+		<Target Name="HgIDE160:Make">
+			<MSBuild Targets="Make" Projects="hgide\HgIDE160.dproj"/>
+		</Target>
+		<Target Name="VerInsLiveBlameIDE160">
+			<MSBuild Projects="liveblame\VerInsLiveBlameIDE160.dproj"/>
+		</Target>
+		<Target Name="VerInsLiveBlameIDE160:Clean">
+			<MSBuild Targets="Clean" Projects="liveblame\VerInsLiveBlameIDE160.dproj"/>
+		</Target>
+		<Target Name="VerInsLiveBlameIDE160:Make">
+			<MSBuild Targets="Make" Projects="liveblame\VerInsLiveBlameIDE160.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="svn160;svnui160;svnide160;GitIDE160;HgIDE160;VerInsLiveBlameIDE160"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="svn160:Clean;svnui160:Clean;svnide160:Clean;GitIDE160:Clean;HgIDE160:Clean;VerInsLiveBlameIDE160:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="svn160:Make;svnui160:Make;svnide160:Make;GitIDE160:Make;HgIDE160:Make;VerInsLiveBlameIDE160:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

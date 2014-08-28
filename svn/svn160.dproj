@@ -1,0 +1,181 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{B69EF219-357E-4651-9748-C3A199E4DA95}</ProjectGuid>
+			<MainSource>svn160.dpk</MainSource>
+			<ProjectVersion>15.4</ProjectVersion>
+			<Config Condition="'$(Config)'==''">Debug</Config>
+			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
+			<Base>True</Base>
+			<AppType>Package</AppType>
+			<FrameworkType>None</FrameworkType>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<Platform Condition="'$(Platform)'==''">Win32</Platform>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
+			<Base_Win64>true</Base_Win64>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+			<Base_Win32>true</Base_Win32>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
+			<Cfg_1>true</Cfg_1>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
+			<Cfg_2>true</Cfg_2>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
+			<Cfg_2_Win32>true</Cfg_2_Win32>
+			<CfgParent>Cfg_2</CfgParent>
+			<Cfg_2>true</Cfg_2>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base)'!=''">
+			<VerInfo_DLL>true</VerInfo_DLL>
+			<VerInfo_Build>32767</VerInfo_Build>
+			<VerInfo_MajorVer>15</VerInfo_MajorVer>
+			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<VerInfo_Release>3873</VerInfo_Release>
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<VerInfo_Keys>CompanyName=Embarcadero Technologies, Inc.;FileDescription=Embarcadero Subverion integration;FileVersion=15.0.3873.32767;InternalName=SVN150;LegalCopyright=Portions Copyrighted © 2005-2010 Embarcadero Technologies, Inc.;LegalTrademarks=;OriginalFilename=SVN150.BPL;ProductName=Package Library;ProductVersion=15.0;Comments=</VerInfo_Keys>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<SanitizedProjectName>svn200</SanitizedProjectName>
+			<DCC_DcuOutput>.\$(Config)\$(Platform)</DCC_DcuOutput>
+			<AppType>Package</AppType>
+			<FrameworkType>None</FrameworkType>
+			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
+			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
+			<DCC_Description>Subversion integration</DCC_Description>
+			<DCC_DependencyCheckOutputName>..\..\..\bin\svn150.bpl</DCC_DependencyCheckOutputName>
+			<GenDll>true</GenDll>
+			<GenPackage>true</GenPackage>
+			<DCC_ImageBase>00400000</DCC_ImageBase>
+			<DCC_Platform>x86</DCC_Platform>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base_Win64)'!=''">
+			<Icon_MainIcon>svn_Icon.ico</Icon_MainIcon>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base_Win32)'!=''">
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+			<Icon_MainIcon>svn_Icon.ico</Icon_MainIcon>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_1)'!=''">
+			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_DebugInformation>0</DCC_DebugInformation>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2)'!=''">
+			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
+			<DCC_SYMBOL_DEPRECATED>false</DCC_SYMBOL_DEPRECATED>
+			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=15.0.3873.32767;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+		</PropertyGroup>
+		<ItemGroup>
+			<DelphiCompile Include="$(MainSource)">
+				<MainSource>MainSource</MainSource>
+			</DelphiCompile>
+			<DCCReference Include="rtl.dcp"/>
+			<DCCReference Include="apr.pas"/>
+			<DCCReference Include="svn_client.pas"/>
+			<DCCReference Include="SvnClient.pas"/>
+			<DCCReference Include="svnconst.pas"/>
+			<DCCReference Include="SvnTree.pas"/>
+			<None Include="RAD Studio Version Insight MPL License.txt"/>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Base">
+				<Key>Base</Key>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Release">
+				<Key>Cfg_1</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+		</ItemGroup>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
+		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
+		<ProjectExtensions>
+			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
+			<Borland.ProjectType>Package</Borland.ProjectType>
+			<BorlandProject>
+				<Delphi.Personality>
+					<Parameters/>
+					<VersionInfo>
+						<VersionInfo Name="IncludeVerInfo">True</VersionInfo>
+						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
+						<VersionInfo Name="MajorVer">15</VersionInfo>
+						<VersionInfo Name="MinorVer">0</VersionInfo>
+						<VersionInfo Name="Release">3873</VersionInfo>
+						<VersionInfo Name="Build">32767</VersionInfo>
+						<VersionInfo Name="Debug">False</VersionInfo>
+						<VersionInfo Name="PreRelease">False</VersionInfo>
+						<VersionInfo Name="Special">False</VersionInfo>
+						<VersionInfo Name="Private">False</VersionInfo>
+						<VersionInfo Name="DLL">True</VersionInfo>
+						<VersionInfo Name="Locale">1033</VersionInfo>
+						<VersionInfo Name="CodePage">1252</VersionInfo>
+					</VersionInfo>
+					<VersionInfoKeys>
+						<VersionInfoKeys Name="CompanyName">Embarcadero Technologies, Inc.</VersionInfoKeys>
+						<VersionInfoKeys Name="FileDescription">Embarcadero Subverion integration</VersionInfoKeys>
+						<VersionInfoKeys Name="FileVersion">15.0.3873.32767</VersionInfoKeys>
+						<VersionInfoKeys Name="InternalName">SVN150</VersionInfoKeys>
+						<VersionInfoKeys Name="LegalCopyright">Portions Copyrighted © 2005-2010 Embarcadero Technologies, Inc.</VersionInfoKeys>
+						<VersionInfoKeys Name="LegalTrademarks"/>
+						<VersionInfoKeys Name="OriginalFilename">SVN150.BPL</VersionInfoKeys>
+						<VersionInfoKeys Name="ProductName">Package Library</VersionInfoKeys>
+						<VersionInfoKeys Name="ProductVersion">15.0</VersionInfoKeys>
+						<VersionInfoKeys Name="Comments"/>
+					</VersionInfoKeys>
+					<Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k200.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dclofficexp200.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dclodac200.bpl">Devart Oracle Data Access Components</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclBaseExpert200.bpl">JCL Package containing common units for JCL Experts</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclDebugExpert200.bpl">JCL Debug IDE extension</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclFavoriteFoldersExpert200.bpl">JCL Open and Save IDE dialogs with favorite folders</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclProjectAnalysisExpert200.bpl">JCL Project Analyzer</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclRepositoryExpert200.bpl">JCL Package containing repository wizards</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclSIMDViewExpert200.bpl">JCL Debug Window of XMM registers</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclStackTraceViewerExpert200.bpl">JCL Stack Trace Viewer</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\JclVersionControlExpert200.bpl">JCL Integration of version control systems in the IDE</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madBasic_.bpl">madBasic 1.2.4  -  www.madshi.net</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madDisAsm_.bpl">madDisAsm 2.2.4  -  www.madshi.net</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExcept_.bpl">madExcept 4.0.10  -  www.madshi.net</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExceptVcl_.bpl">madExceptVcl 2.1.0  -  www.madshi.net</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExceptIde_.bpl">madExceptIde 1.1.0  -  www.madshi.net</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\madExceptWizard_.bpl">madExceptWizard 3.1.5  -  www.madshi.net</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dcldxSkinsDesignHelperRS19.bpl">ExpressSkins Library Uses Clause Auto Fill Helper by Developer Express Inc.</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dcldxSkinscxEditorsHelperRS19.bpl">ExpressSkins Library Uses Clause Auto Fill Helper for ExpressEditors by Developer Express Inc.</Excluded_Packages>
+						<Excluded_Packages Name="D:\DevBin\Projects_TRUNK_XE6\Bpl\Win32\dcldxSkinscxPCPainterRS19.bpl">ExpressSkins Library Uses Clause Auto Fill Helper for PageControl Painter by Developer Express Inc.</Excluded_Packages>
+					</Excluded_Packages>
+					<Source>
+						<Source Name="MainSource">svn160.dpk</Source>
+					</Source>
+				</Delphi.Personality>
+				<Platforms>
+					<Platform value="OSX32">False</Platform>
+					<Platform value="Win64">False</Platform>
+					<Platform value="Win32">True</Platform>
+				</Platforms>
+			</BorlandProject>
+			<ProjectFileVersion>12</ProjectFileVersion>
+		</ProjectExtensions>
+	</Project>
